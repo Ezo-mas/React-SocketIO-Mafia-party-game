@@ -1,8 +1,0 @@
-[variables]
-  NODE_VERSION = "18" # or "20" (choose the version your project needs)
-
-[build]
-  command = "cd client && npm install && npm run build && cd ../server && npm install"
-
-[start]
-  command = "node server/index.js"
