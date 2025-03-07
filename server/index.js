@@ -27,6 +27,9 @@ io.on('connection', (socket) => {
   });
 });
 
+app.get("/", (req, res) => {
+    res.send("Server is running!");
+});
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
