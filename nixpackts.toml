@@ -1,0 +1,9 @@
+[project]
+  # Set the project root as needed (here, we keep it at the repository root)
+  root = "."
+
+[build]
+  # Specify the Node.js builder so that npm is available
+  builder = "nodejs"
+  # Define your build command
+  command = "npm install --prefix client && npm run build --prefix client && npm install --prefix server"
