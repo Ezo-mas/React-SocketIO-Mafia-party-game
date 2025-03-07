@@ -14,7 +14,7 @@ RUN npm install --prefix client && npm run build --prefix client
 RUN npm install --prefix server
 
 # Expose the port
-EXPOSE 4000
+EXPOSE 8080
 
 # Start the backend server
 CMD ["node", "server/index.js"]
