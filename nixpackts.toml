@@ -1,7 +1,8 @@
+[variables]
+  NODE_VERSION = "18" # or "20" (choose the version your project needs)
+
 [build]
-  # The command to install and build both client and server
-  command = "npm install --prefix client && npm run build --prefix client && npm install --prefix server"
+  command = "cd client && npm install && npm run build && cd ../server && npm install"
 
 [start]
-  # Start the backend server
   command = "node server/index.js"
