@@ -31,3 +31,11 @@ const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../client/build')));
+
+// For any other route, serve the index.html file from the build
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+});
