@@ -27,10 +27,6 @@ io.on('connection', (socket) => {
   });
 });
 
-app.get("/", (req, res) => {
-    res.send("Server is running!");
-});
-
 const path = require('path');
 app.use(express.static(path.join(__dirname, '../client/build')));
 
