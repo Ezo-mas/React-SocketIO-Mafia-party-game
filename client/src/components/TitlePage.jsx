@@ -8,15 +8,30 @@ const socket = io('http://localhost:8080');
 
 const TitlePage = () => {
   const [name, setName] = useState('');
+  const [roomId, setRoomId] = useState('');
   const navigate = useNavigate();
   const { addPlayer } = useContext(LobbyContext);
 
-  const handleStart = () => {
+  const handleCreateRoom = () => {
     if (name.trim()) {
-      const roomId = uuidv4();
+      const newRoomId = uuidv4();
+      addPlayer(name);
+      socket.emit('join_room', newRoomId, name);
+      navigate(`/lobby/${newRoomId}`, { state: { username: name } });
+    } else {
+      alert('Please enter your name.');
+    }
+  };
+
+  const handleJoinRoom = () => {
+    if (name.trim() && roomId.trim()) {
       addPlayer(name);
       socket.emit('join_room', roomId, name);
       navigate(`/lobby/${roomId}`, { state: { username: name } });
+    } else if (!name.trim()) {
+      alert('Please enter your name.');
+    } else if (!roomId.trim()) {
+      alert('Please enter the room ID.');
     }
   };
 
@@ -31,8 +46,20 @@ const TitlePage = () => {
         style={{ padding: '0.5rem', fontSize: '1rem' }}
       />
       <br />
-      <button onClick={handleStart} style={{ marginTop: '1rem', padding: '0.5rem 1rem', fontSize: '1rem' }}>
-        Start
+      <button onClick={handleCreateRoom} style={{ marginTop: '1rem', padding: '0.5rem 1rem', fontSize: '1rem' }}>
+        Create Room
+      </button>
+      <br />
+      <input
+        type="text"
+        placeholder="Enter room ID"
+        value={roomId}
+        onChange={(e) => setRoomId(e.target.value)}
+        style={{ marginTop: '1rem', padding: '0.5rem', fontSize: '1rem' }}
+      />
+      <br />
+      <button onClick={handleJoinRoom} style={{ marginTop: '1rem', padding: '0.5rem 1rem', fontSize: '1rem' }}>
+        Join Room
       </button>
     </div>
   );

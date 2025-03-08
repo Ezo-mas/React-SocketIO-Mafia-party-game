@@ -9,10 +9,9 @@ function App() {
     <LobbyProvider>
       <Router>
         <div>
-          {/* Define your routes */}
           <Routes>
             <Route path="/" element={<TitlePage />} />
-            <Route path="/lobby/:roomID" element={<LobbyPage />} />
+            <Route path="/lobby/:roomId" element={<LobbyPage />} />
           </Routes>
         </div>
       </Router>

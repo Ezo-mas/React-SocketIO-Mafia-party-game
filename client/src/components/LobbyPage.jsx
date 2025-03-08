@@ -13,27 +13,45 @@ const LobbyPage = () => {
   const [inviteLink, setInviteLink] = useState('');
 
   useEffect(() => {
-    setInviteLink(`${window.location.origin}/lobby/${roomId}`);
-    socket.emit('join_room', roomId, username);
+    console.log('useEffect triggered');
+    console.log('roomId:', roomId);
+    if (roomId) {
+      const link = `${roomId}`;
+      setInviteLink(link);
+      console.log('Invite link set:', link); // Debug log
+      socket.emit('join_room', roomId, username);
 
-    socket.on('player_joined', (newPlayer) => {
-      addPlayer(newPlayer);
-    });
+      socket.on('player_joined', (newPlayer) => {
+        if (!players.includes(newPlayer)) {
+          addPlayer(newPlayer);
+        }
+      });
 
-    socket.on('game_started', () => {
-      alert('The game has started!');
-      // Add logic to transition to the game screen
-    });
+      socket.on('game_started', () => {
+        alert('The game has started!');
+        // Add logic to transition to the game screen
+      });
 
-    return () => {
-      socket.off('player_joined');
-      socket.off('game_started');
-    };
-  }, [roomId, username, addPlayer]);
+      return () => {
+        socket.off('player_joined');
+        socket.off('game_started');
+      };
+    }
+  }, [roomId, username, addPlayer, players]);
 
   const handleInvite = () => {
-    navigator.clipboard.writeText(inviteLink);
-    alert('Invite link copied to clipboard!');
+    console.log('handleInvite called');
+    console.log('inviteLink:', inviteLink);
+    if (inviteLink) {
+      navigator.clipboard.writeText(inviteLink).then(() => {
+        alert('Invite link copied to clipboard!');
+      }).catch((err) => {
+        console.error('Failed to copy invite link:', err);
+        alert('Failed to copy invite link.');
+      });
+    } else {
+      alert('Invite link is not set.');
+    }
   };
 
   const handleStartLobby = () => {
