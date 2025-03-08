@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { LobbyContext } from '../context/LobbyContext';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:8080');
+const socket = io(process.env.REACT_APP_SERVER_URL);
 
 const TitlePage = () => {
   const [name, setName] = useState('');
