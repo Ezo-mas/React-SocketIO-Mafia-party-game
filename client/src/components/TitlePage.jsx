@@ -1,15 +1,22 @@
-// TitlePage.jsx
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import { LobbyContext } from '../context/LobbyContext';
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:8080');
 
 const TitlePage = () => {
   const [name, setName] = useState('');
   const navigate = useNavigate();
+  const { addPlayer } = useContext(LobbyContext);
 
   const handleStart = () => {
     if (name.trim()) {
-      // Optionally, store the name in a context or localStorage if needed.
-      navigate('/lobby', { state: { username: name } });
+      const roomId = uuidv4();
+      addPlayer(name);
+      socket.emit('join_room', roomId, name);
+      navigate(`/lobby/${roomId}`, { state: { username: name } });
     }
   };
 
