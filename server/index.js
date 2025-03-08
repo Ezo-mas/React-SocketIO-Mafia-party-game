@@ -27,10 +27,10 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.get("/", (req, res) => {
+    res.send("Server is running!");
 });
+<<<<<<< HEAD
 
 const path = require('path');
 app.use(express.static(path.join(__dirname, '../client/build')));
@@ -39,3 +39,10 @@ app.use(express.static(path.join(__dirname, '../client/build')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
 });
+=======
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+
+process.stdin.resume();
