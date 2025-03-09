@@ -55,7 +55,7 @@ const LobbyPage = () => {
   };
 
   const handleStartLobby = () => {
-    if (players.length >= 4 && players.length <= 8) {
+    if (players.length >= 4 && players.length <= 12) {
       socket.emit('start_game', roomId);
     } else {
       alert('The number of players must be between 4 and 8 to start the game.');
@@ -75,7 +75,7 @@ const LobbyPage = () => {
           ))}
         </ul>
       </div>
-      <button onClick={handleStartLobby} disabled={players.length < 4 || players.length > 8}>
+      <button onClick={handleStartLobby} disabled={players.length < 4 || players.length > 12}>
         Start Lobby
       </button>
     </div>
