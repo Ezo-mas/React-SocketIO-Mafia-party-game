@@ -58,7 +58,7 @@ const LobbyPage = () => {
     if (players.length >= 4 && players.length <= 12) {
       socket.emit('start_game', roomId);
     } else {
-      alert('The number of players must be between 4 and 8 to start the game.');
+      alert('The number of players must be between 4 and 12 to start the game.');
     }
   };
 
