@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <title>Mafia Online</title> 
+
+    <!-- Link to CSS file -->
+    <link rel="stylesheet" href="styles.css" /> 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/lib...">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- AOS CSS (Animate on Scroll) -->
+    <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">    
+</head>
+<body>
+
+    <!--navigation menu -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                <span>Mafia Online</span>
+            </div>
+            <div class="links">
+                <div class="link"> <a href="index.html" id="home-link">Play</a></div>
+                <div class="link"> <a href="about.html" id="about-link">About Us</a></div>
+            </div>
+            <i class="fa-solid fa-bars hamburg" onclick="hamburg()"></i>
+        </div>
+        <div class="dropdown">
+            <div class="links">
+                <a href="index.html">Home</a>
+                <a href="about.html">About Us</a>
+                <i class="fa-solid fa-xmark cancel" onclick="cancel()"></i>
+            </div>
+        </div>
+    </nav>
+    
+
+    <!--About section-->
+    <section class="about" id="about">
+        <div class="content"> 
+            <div class="title"><span>About Us</span></div>
+            <div class="about-details">
+                <div class="left">
+                    <img src="hd dpz Whatsapp Instagram Facebook.jpg" alt=""/>
+                </div>
+                <div class="right">
+                    <br>
+                    <p>
+                        Welcome to Mafia World, a thrilling online game we created as part of a university project. This game is the result of hard work, creativity, and teamwork from me and my classmates. We wanted to bring the excitement and strategy of the Mafia game genre to life, all while learning and experimenting with game development.
+                    </p>
+                    <br>
+                    <p>
+                        As university students, we’ve put our skills to the test, combining our passion for gaming with the knowledge we’ve gained in class. Every feature, every mechanic, and every character is the product of hours of collaboration, problem-solving, and a shared vision.
+                    </p>
+                    <br>
+                    <p>
+                        We hope you enjoy playing Mafia World as much as we enjoyed creating it!
+                    </p>
+                    <br>
+                    <p>
+                        This game is designed for players who enjoy strategy, deception, and intense social interaction. It blends classic Mafia gameplay with modern mechanics and challenges, ensuring that every game is unique and full of excitement. Whether you are an experienced Mafia player or new to the genre, Mafia World offers a fun and engaging experience for all skill levels.
+                    </p>
+                    <br>                  
+                    <p>
+                        Thank you for your support, and we look forward to hearing your feedback as we continue to improve and expand Mafia World. We hope you enjoy the game, and may the best Mafia boss win!
+                    </p>
+                </div>
+            </div>
+        </div>                
+    </section>
+
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+        let currentPage = window.location.pathname.split("/").pop(); // Gauti dabartinio puslapio pavadinimą
+
+        let links = {
+            "index.html": document.getElementById("home-link"),
+            "about.html": document.getElementById("about-link"),
+            "join.html": document.getElementById("join-link"),
+            "create.html": document.getElementById("create-link")
+        };
+
+        if (links[currentPage]) {
+            links[currentPage].classList.add("active"); // Prideda 'active' klasę prie dabartinio puslapio nuorodos
+        }
+        });
+
+    </script>          
+    
+</body>
+</html>
