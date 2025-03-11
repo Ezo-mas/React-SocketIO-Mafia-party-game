@@ -6,22 +6,25 @@
     <title>Mafia Online</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/lib...">
+    <!-- AOS CSS (Animate on Scroll) -->
+    <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
 </head>
 <body>
-    <section class="how-to-play">
-        <div class="container">
-            <h2>Mafia Game</h2>
-            <div class="image">
-                <img src="OHedN0iv.jpg" alt="Mafia Game Image" />
-            </div>
-            <div class="description">
-                <p>
-                    Mafia is a social deduction game where players are divided into two teams: the Mafia and the Townspeople. The Mafia's goal is to eliminate all the Townspeople, while the Townspeople aim to uncover and eliminate all the Mafia members. The game alternates between day and night phases. During the day, players discuss and vote on who they suspect to be a Mafia member. At night, the Mafia secretly chooses a 
-                    Townsperson to eliminate.
-                </p>
-            </div>
-        </div>
-    </section>
     <div id="root"></div>
+    
+    <script>
+        function hamburg() {
+            document.querySelector('.dropdown').style.transform = 'translateY(0)';
+        }
+        
+        function cancel() {
+            document.querySelector('.dropdown').style.transform = 'translateY(-500px)';
+        }
+        
+        // Expose these functions to the window object so they can be called from React
+        window.hamburg = hamburg;
+        window.cancel = cancel;
+    </script>
 </body>
 </html>
