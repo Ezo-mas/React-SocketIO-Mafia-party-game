@@ -1,0 +1,534 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600&display=swap');
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing:border-box;
+    font-family: 'Poppins', sans-serif;
+    text-decoration: none;
+    scroll-behavior: smooth;
+}
+
+body{
+    width: 100%;
+    height: auto;
+    background-color: black;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* ================== */
+/* Navbar Styling     */
+/* ================== */
+nav{
+    width: 100%;
+    height: 10vh;
+}
+
+/* ================== */
+/* Navigation Links */
+/* ================== */
+.nav-container .links {
+    display: flex;
+    flex-direction: row; 
+    gap: 20px; 
+}
+
+.nav-container .links .link {
+    margin-right: 20px; 
+}
+
+.nav-container .links a{
+    position: relative;
+    font-size: 1.2rem;
+    color: white;
+    margin: 020px;
+    text-decoration: none;
+    font-weight: 550;
+    transition: 0.3s linear;
+}
+
+.nav-container .links a::before{
+    position: absolute;
+    content: "";
+    bottom: -3px;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background-color: #b74b4b;
+    transition: 0.2s linear;
+}
+
+.nav-container .links a:hover:before{
+    width: 100%;
+}
+
+.nav-container .links a:hover{
+    color: #b74b4b;
+}
+
+.nav-container{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 20px;   
+}
+
+/* ================== */
+/* Logo Styling */
+/* ================== */
+.logo{
+    color: white;
+    font: 2rem;
+    font-size: 3rem;
+    font-weight: bold;
+}
+
+.logo span{
+    color: #b74b4b;
+    text-shadow: 0 0 10px #b74b4b;
+}
+
+/* ================== */
+/* Mobile Navigation Icons */
+/* ================== */
+.hamburg,
+.cancel{
+    cursor: pointer;
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    color: white;
+    opacity: 0;
+    pointer-events: none;
+    font-size: clamp(2.5rem, 0,5rem + 5vw, 3rem);
+}
+
+/* ================== */
+/* Dropdown Navigation */
+/* ================== */
+.dropdown{
+    z-index: 100;
+    position: absolute;
+    top: 0;
+    transform: translateY(-500px);
+    width: 100%;
+    height: auto;
+    backdrop-filter: blur(4px) brightness(40%);
+    box-shadow: 0 0 20px black;
+    transition: 0.2s linear;
+}
+
+.dropdown .links a{
+    display: flex;
+    color: white;
+    text-decoration: none;
+    justify-content: center;
+    padding: 15px 0;
+    align-items: center;
+    transition: 0.2s linear;
+}
+
+.dropdown .links a:hover{
+    background-color: #b74b4b;
+}
+
+
+/* ================== */
+/* Sections Styling   */
+/* ================== */
+section{
+    width: 100%;
+    min-height: auto;
+    padding: 50px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+section .main-container{
+    display: flex;
+    justify-content: space-between;
+    padding-left: 50px;
+    align-items: center;
+}
+
+@keyframes animate{
+    0%{
+        scale: 1;
+    }
+
+    50%{
+        scale: 1.05;
+    }
+
+    100%{
+        scale: 1;
+    }
+}
+
+.main-container .content{
+color: white;
+width: 40%;
+}
+
+.content h1 span{
+    color: #b74b4b;
+    text-shadow: 0 0 10px #b74b4b;
+}
+
+.content .typewriter{
+    font-size: clamp(1rem, 1rem + 5vw, 2.5rem);
+    font-weight: 600;
+}
+
+.content .typewriter-text {
+    color: #b74b4b;
+    text-shadow: 0 0 10px #b74b4b;
+    padding-right: 5px;
+    font-weight: bold;
+    font-size: 2.5rem;
+}
+
+.content p{
+    text-align: justify;
+    color: white;
+    width: 80%;
+}
+
+.section .content{
+    width: 75%;
+    margin: 0px auto;
+    font-family: 'Poppins' sans-serif;
+}
+
+/* ================================ */
+/* About & Join & Ctreate Styles */
+/* ================================ */
+
+section .title {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+section .title span {
+    color: white;
+    font-size: 30px;
+    font-weight: 600;
+    position: relative;
+    padding-bottom: 8px;
+}
+
+section .title span::before,
+section .title span::after {
+    content: '';
+    position: absolute;
+    height: 3px;
+    width: 100%;
+    background: #b74b4b;
+    left: 0;
+    bottom: 0;
+}
+
+section .title span::after {
+    bottom: -7px;
+    width: 70%;
+    left: 50%;
+    transform: translate(-50%);
+}
+
+.about .about-details .left {
+    width: 45%;
+}
+
+section .topic {
+    color: white;
+    font-size: 25px;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.about .left img {
+    height: 600px;
+    width: 600px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.about-details .right,
+.join-details .right, 
+.create-details .right {
+    width: 55%;
+}
+
+.about-details .right p,
+.join-details .right p, 
+.create-details .right p {
+    text-align: justify;
+    color: white;
+    width: 70%;
+}
+
+.about-details, 
+.join-details, 
+.create-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 40px;
+}
+
+
+
+
+/* ================== */
+/* Join Section       */
+/* ================== */
+.join {
+    background: black;
+}
+
+.join .content {
+    padding: 40px 0;
+}
+
+.join .join-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.join-details .text {
+    width: 50%;
+}
+
+.join-details p {
+    text-align: justify;
+    color: white;
+    width: 70%;
+}
+
+/* List Styling */
+.join .join-details .right ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    color: white;
+}
+
+.join .left img {
+    height: 600px;
+    width: 600px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+/* Input Field */
+.join .join-details input[type="text"] {
+    padding: 10px;
+    font-size: 16px;
+    width: 100%;
+    max-width: 300px; 
+    border: 2px solid #b74b4b; 
+    border-radius: 5px;
+    margin: 20px 0;
+    background-color: black; 
+    color: #fff;     
+}
+
+/* ================== */
+/* Create Section     */
+/* ================== */
+.create {
+    background: black;
+}
+
+.create .content {
+    padding: 40px 0;
+}
+
+.create .create-details .left {
+    width: 45%;
+}
+
+.create .left img {
+    height: 600px;
+    width: 600px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.create-details .right p {
+    text-align: justify;
+    color: white;
+    width: 70%;
+}
+
+/* List Styling */
+.create .create-details .right ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    color: white;
+}
+
+/* Input Field for room code */
+.create .create-details input[type="text"] {
+    padding: 10px;
+    font-size: 16px;
+    width: 100%;
+    max-width: 300px; 
+    border: 2px solid #b74b4b; 
+    border-radius: 5px;
+    margin: 20px 0;
+    background-color: black; 
+    color: #fff; 
+}
+
+
+/* ================== */
+/* Generated Room Code */
+/* ================== */
+#create #generatedCode {
+    font-size: 36px; 
+    color: #b74b4b; 
+    font-weight: bold; 
+    margin-top: 10px; 
+}
+
+
+.nav-container .links a.active {
+    color: #b74b4b;
+}
+
+.nav-container .links a.active::before {
+    width: 100%;
+}
+
+/* ================== */
+/* Buttons Styling    */
+/* ================== */
+section .button {
+    margin: 16px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+section .button button {
+    outline: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 25px;
+    font-weight: 400;
+    background: #b74b4b;
+    color: #fff;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s ease;
+}
+
+section .button button:hover {
+    border-color: #b74b4b;
+    background-color: #fff;
+    color: #b74b4b;
+}
+
+
+/* ================== */
+/* How to Play Section */
+/* ================== */
+.how-to-play {
+    width: 100%;
+    min-height: 90vh;
+    background: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 50px 0;
+}
+
+.how-to-play .container {
+    width: 80%;
+    max-width: 900px;
+    color: white;
+}
+
+.how-to-play h2 {
+    font-size: 36px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #b74b4b;
+    text-shadow: 0 0 10px #b74b4b;
+}
+
+.how-to-play p {
+    text-align: center; /* Pakeistas tekstas i centra */
+    color: white;
+    width: 70%;
+    margin: 20px auto; /* Pridėtas margin, kad centruotų p elementą */
+}
+
+.how-to-play h3 {
+    font-size: 28px;
+    font-weight: 500;
+    margin-top: 30px;
+    color: #b74b4b;
+}
+
+.how-to-play ul {
+    list-style-type: none;
+    padding: 0;
+    text-align: left;
+}
+
+.how-to-play ul li {
+    font-size: 18px;
+    margin: 10px 0;
+    padding-left: 25px;
+    position: relative;
+}
+
+.how-to-play ul li::before {
+    content: "•";
+    color: #b74b4b;
+    font-size: 24px;
+    position: absolute;
+    left: 0;
+    top: 2px;
+}
+
+.how-to-play .play-now {
+    margin-top: 30px;
+}
+
+.how-to-play .play-button {
+    display: inline-block;
+    padding: 12px 25px;
+    font-size: 20px;
+    font-weight: bold;
+    background-color: #b74b4b;
+    color: white;
+    border-radius: 5px;
+    transition: 0.3s;
+}
+
+.how-to-play .play-button:hover {
+    background-color: white;
+    color: #b74b4b;
+    border: 2px solid #b74b4b;
+}
+
+.how-to-play .image {
+    max-width: 300px; /* Sumažintas paveikslėlio plotis */
+    margin: 20px auto; /* Centruoja paveikslėlį */
+}
+
+.how-to-play .image img {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+}
