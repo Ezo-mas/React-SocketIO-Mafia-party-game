@@ -1,0 +1,105 @@
+/* LobbyPage.module.css */
+
+.main-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: black;
+    min-height: 100vh;
+    padding: 60px;
+    box-sizing: border-box;
+  }
+  
+  .content {
+    color: #ddd;
+    width: 55%;
+  }
+  
+  .title {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+  }
+  
+  .inviteText {
+    margin-bottom: 20px;
+  }
+  
+  .input {
+    padding: 10px;
+    font-size: 16px;
+    width: 100%;
+    max-width: 300px;
+    border: 2px solid #b74b4b;
+    border-radius: 5px;
+    margin: 10px 0;
+    background-color: black;
+    color: #ddd;
+  }
+  
+  .button {
+    outline: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: 400;
+    background: #b74b4b;
+    color: #ddd;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    margin: 10px 0;
+  }
+  
+  .button:hover {
+    border-color: #b74b4b;
+    background-color: #ddd;
+    color: #b74b4b;
+  }
+  
+  .playersList {
+    margin-top: 2rem;
+  }
+  
+  .playersTitle {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .playersUl {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .playersLi {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #444;
+    color: #ddd;
+  }
+  
+  .copySuccess {
+    color: green;
+    margin-top: 0.5rem;
+  }
+  
+  .copyError {
+    color: red;
+    margin-top: 0.5rem;
+  }
+
+.kickButton {
+    background-color: #ff4d4d; /* Raudona spalva */
+    color: #ddd;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    margin-left: 10px;
+  }
+  
+  .kickButton:hover {
+    border-color: #ff4d4d;
+    background-color: #ddd;
+    color: #ff4d4d;
+  }
