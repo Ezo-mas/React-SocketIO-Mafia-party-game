@@ -15,6 +15,7 @@ const io = new Server(server, {
 });
 
 const rooms = {};
+const roomHosts = new Map();
 
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
@@ -37,10 +38,10 @@ io.on('connection', (socket) => {
     }
 
     if (isHost) {
-      // You can use a Map or object to track room hosts
-      rooms = rooms || new Map();
-      rooms.set(roomId, username);
+      // Track room hosts in a separate Map
+      roomHosts.set(roomId, username);
     }
+
     rooms[roomId].players.push({ id: socket.id, username });
     io.to(roomId).emit('player_joined', username);
   });
