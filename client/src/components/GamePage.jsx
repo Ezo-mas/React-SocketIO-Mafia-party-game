@@ -23,10 +23,12 @@ const GamePage = () => {
 
     // Listen for game events
     const handleGameStateUpdate = (newState) => {
+      console.log('Game state update received:', newState);
       setGameState(newState);
     };
 
     const handleRoleAssigned = (role) => {
+      console.log('Role assigned:', role);
       setGameState(prev => ({
         ...prev,
         role,
@@ -67,7 +69,8 @@ const GamePage = () => {
               className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
             >
               <div className={styles.playerName}>
-                {player.username} {player.username === username && "(You)"}
+                {player.username} (Placeholder)
+                  {/* {player.username} {player.username === username && "(You)"} */}
               </div>
               <div className={styles.playerStatus}>
                 {player.isAlive ? 'Alive' : 'Dead'}

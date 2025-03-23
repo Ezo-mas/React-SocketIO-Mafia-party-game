@@ -5,6 +5,7 @@ import TitlePage from './components/TitlePage';
 import LobbyPage from './components/LobbyPage';
 import LandingPage from './components/LandingPage.jsx';
 import AboutPage from './components/AboutPage';
+import GamePage from './components/GamePage'; // Import GamePage
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
             <Route path="/title" element={<TitlePage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/lobby/:roomId" element={<LobbyPage />} />
+            <Route path="/game/:roomId" element={<GamePage />} />
           </Routes>
         </div>
       </Router>

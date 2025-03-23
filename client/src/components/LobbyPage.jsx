@@ -130,6 +130,12 @@ const LobbyPage = () => {
   const handleStartGame = () => {
     if (isHost && readyPlayers.length === players.length && players.length >= 4 && players.length <= 12) {
       socket.emit('start_game', roomId, gameSettings);
+      navigate(`/game/${roomId}`, { 
+        state: { 
+          username,
+          gameSettings
+        } 
+      });
     } else if (players.length < 4 || players.length > 12) {
       alert('The number of players must be between 4 and 12 to start the game.');
     } else if (readyPlayers.length !== players.length) {
@@ -339,7 +345,7 @@ const LobbyPage = () => {
           <>
             <button
               onClick={handleStartGame}
-              // disabled={!allPlayersReady || players.length < 4 || players.length > 12}
+              disabled={!allPlayersReady || players.length < 4 || players.length > 12}
               className={styles.startButton}
             >
               Start Game
