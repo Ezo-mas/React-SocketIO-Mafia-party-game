@@ -55,11 +55,19 @@
     background-color: #ddd;
     color: #b74b4b;
   }
+
+  .button:disabled {
+    background-color: #444;
+    color: #777;
+    cursor: not-allowed;
+    border-color: transparent;
+  }
   
   .playersList {
     margin-top: 2rem;
+    margin-bottom: 2rem;
   }
-  
+
   .countdownTitle {
     margin-bottom: 1rem;
     color: white;
@@ -85,9 +93,12 @@
   }
   
   .playersLi {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #444;
-    color: #ddd;
+    padding: 1rem;
+  border-bottom: 1px solid #444;
+  color: #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   }
   
   .copySuccess {
@@ -117,3 +128,185 @@
     background-color: #ddd;
     color: #ff4d4d;
   }
+
+  .kickButton:disabled {
+    background-color: #444;
+    color: #777;
+    cursor: not-allowed;
+  }
+  
+  /* New styles for the ready system */
+  .readyButton {
+    outline: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: 400;
+    background: #4CAF50; /* Green */
+    color: #ddd;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    margin: 10px 10px 10px 0;
+    width: 150px;
+  }
+  
+  .readyButton:hover {
+    border-color: #4CAF50;
+    background-color: #ddd;
+    color: #4CAF50;
+  }
+  
+  .notReadyButton {
+    outline: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: 400;
+    background: #FF9800; /* Orange */
+    color: #ddd;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    margin: 10px 10px 10px 0;
+    width: 150px;
+  }
+  
+  .notReadyButton:hover {
+    border-color: #FF9800;
+    background-color: #ddd;
+    color: #FF9800;
+  }
+  
+  .startButton {
+    outline: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: 400;
+    background: #2196F3; /* Blue */
+    color: #ddd;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    margin: 10px 10px 10px 0;
+    width: 150px;
+  }
+  
+  .startButton:hover {
+    border-color: #2196F3;
+    background-color: #ddd;
+    color: #2196F3;
+  }
+  
+  .startButton:disabled {
+    background-color: #444;
+    color: #777;
+    cursor: not-allowed;
+  }
+  
+  .lockButton {
+    outline: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: 400;
+    background: #9C27B0; /* Purple */
+    color: #ddd;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    margin: 10px 0;
+    width: 150px;
+  }
+  
+  .lockButton:hover {
+    border-color: #9C27B0;
+    background-color: #ddd;
+    color: #9C27B0;
+  }
+  
+  .lockButton:disabled {
+    background-color: #444;
+    color: #777;
+    cursor: not-allowed;
+  }
+  
+  .readyTag {
+    background-color: #4CAF50;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-left: 10px;
+  }
+  
+  /* Game settings section */
+  .settingsPanel {
+    margin-top: 2rem;
+    padding: 1rem;
+    border: 1px solid #444;
+    border-radius: 5px;
+    background-color: #222;
+  }
+  
+  .settingsDisplay {
+    margin-top: 2rem;
+    padding: 1rem;
+    border: 1px solid #444;
+    border-radius: 5px;
+    background-color: #222;
+  }
+  
+  .settingsTitle {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #b74b4b;
+  }
+  
+  .settingRow {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    justify-content: space-between;
+  }
+  
+  .settingInput {
+    padding: 8px;
+    width: 80px;
+    border: 1px solid #b74b4b;
+    border-radius: 4px;
+    background-color: #333;
+    color: #ddd;
+  }
+  
+  .settingSlider {
+    width: 150px;
+    margin: 0 10px;
+  }
+  
+  .settingCheckbox {
+    margin-right: 10px;
+  }
+  
+  .roleDistribution {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed #444;
+  }
+  
+  .roleDistribution h4 {
+    margin-bottom: 10px;
+    color: #ddd;
+  }
+  
+  .roleDistribution ul {
+    list-style: none;
+    padding-left: 10px;
+  }
+  
+  .roleDistribution li {
+    margin-bottom: 5px;
+    color: #ddd;
+  }
+  

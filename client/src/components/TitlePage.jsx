@@ -13,6 +13,7 @@ const TitlePage = () => {
   const navigate = useNavigate();
   const { addPlayer } = useContext(LobbyContext);
   const textRef = useRef(null);
+  const { setRoomHost } = useContext(LobbyContext);
 
   useEffect(() => {
     const texts = [" Mafioso", " Detective", " Civilian", " Insider"];
@@ -54,8 +55,9 @@ const TitlePage = () => {
     if (name.trim()) {
       const newRoomId = uuidv4();
       addPlayer(name);
-      socket.emit('join_room', newRoomId, name);
-      navigate(`/lobby/${newRoomId}`, { state: { username: name } });
+      setRoomHost(name);
+      socket.emit('join_room', newRoomId, name, true);
+      navigate(`/lobby/${newRoomId}`, { state: { username: name, isHost: true } });
     } else {
       alert('Please enter your name.');
     }
@@ -64,8 +66,8 @@ const TitlePage = () => {
   const handleJoinRoom = () => {
     if (name.trim() && roomId.trim()) {
       addPlayer(name);
-      socket.emit('join_room', roomId, name);
-      navigate(`/lobby/${roomId}`, { state: { username: name } });
+      socket.emit('join_room', roomId, name, false);
+      navigate(`/lobby/${roomId}`, { state: { username: name, isHost: false } });
     } else if (!name.trim()) {
       alert('Please enter your name.');
     } else if (!roomId.trim()) {
