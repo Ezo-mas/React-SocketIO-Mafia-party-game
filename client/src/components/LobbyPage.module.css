@@ -60,6 +60,20 @@
     margin-top: 2rem;
   }
   
+  .countdownTitle {
+    margin-bottom: 1rem;
+    color: white;
+    font-size: 2.5em;
+    font-weight: bold;
+  }
+
+  .countdownEnding {
+    margin-bottom: 1rem;
+    color: red;
+    font-size: 2.5em;
+    font-weight: bold;
+  }
+
   .playersTitle {
     font-size: 1.5rem;
     margin-bottom: 1rem;

@@ -4,6 +4,8 @@ import { LobbyContext } from '../context/LobbyContext';
 import { io } from 'socket.io-client';
 import styles from './LobbyPage.module.css';
 
+import Countdown, { zeroPad } from 'react-countdown' ;
+
 const socket = io(process.env.REACT_APP_SERVER_URL);
 
 const LobbyPage = () => {
@@ -72,11 +74,34 @@ const LobbyPage = () => {
     alert(`Player ${playerToKick} kicked!`);
   };
 
+  // Atsakingas už countdown formatavimą. 
+  const renderer = ({ minutes, seconds, completed }) => {
+    if (completed) {
+      // Render a complete state
+      return <span>Time's up!</span>;
+    } else if (seconds <= 15 && minutes == 0) {
+      // Render a panic countdown
+      return (<span className={styles.countdownEnding}>
+          {zeroPad(minutes)}:{zeroPad(seconds)}
+        </span>
+      );
+    } else {
+      // Render a countdown
+      return (
+        <span>
+          {zeroPad(minutes)}:{zeroPad(seconds)}
+        </span>
+      );
+    }
+  };
+
   return (
     <div className={styles['main-container']}>
       <div className={styles.content}>
-        <h2 className={styles.title}>Welcome, {username}!</h2>
+        <h1 className={styles.countdownTitle}>Time left to buckle up: <Countdown date={Date.now() + 60000} renderer={renderer} className={styles.title}/></h1>
+        <h2 className={styles.title}>Welcome, {username}! </h2>
         <p className={styles.inviteText}>Invite your friends to join the lobby:</p>
+        
         <input
           type="text"
           value={inviteLink}
