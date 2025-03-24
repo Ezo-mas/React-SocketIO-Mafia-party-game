@@ -12,35 +12,68 @@ const GamePage = () => {
   const [gameState, setGameState] = useState({
     phase: 'night', // 'day' or 'night'
     phaseTime: 0, // time remaining in current phase
-    players: [],
-    role: 'waiting', // player's assigned role
+    players: location.state?.players || [],
+    role: location.state?.role || 'waiting', // player's assigned role
     isAlive: true,
   });
 
   useEffect(() => {
-    // Join game room
+
     socket.emit('join_game', roomId, username);
 
-    // Listen for game events
     const handleGameStateUpdate = (newState) => {
       console.log('Game state update received:', newState);
-      setGameState(newState);
+      setGameState(prevState => ({
+        ...prevState,
+        players: newState.players.map(player => {
+          const existingPlayer = prevState.players.find(p => p.id === player.id);
+          if (existingPlayer) {
+            return { ...player, isAlive: existingPlayer.isAlive };
+          } else {
+            return player;
+          }
+        }),
+      }));
     };
 
     const handleRoleAssigned = (role) => {
       console.log('Role assigned:', role);
-      setGameState(prev => ({
-        ...prev,
-        role,
-      }));
+      setGameState(prev => {
+        const updatedPlayers = prev.players.map(player => {
+          if (player.username === username) {
+            return { ...player, role: role };
+          } else {
+            return player;
+          }
+        });
+        return {
+          ...prev,
+          players: updatedPlayers,
+        };
+      });
     };
 
     socket.on('game_state_update', handleGameStateUpdate);
     socket.on('role_assigned', handleRoleAssigned);
+    socket.on('game_started', (data) => {
+      console.log('Game started:', data);
+      setGameState(prevState => ({
+        ...prevState,
+        role: data.role,
+      }));
+      navigate(`/game/${roomId}`, {
+        state: {
+          username,
+          gameSettings,
+          role: data.role,
+        }
+      });
+    });
 
     return () => {
       socket.off('game_state_update', handleGameStateUpdate);
       socket.off('role_assigned', handleRoleAssigned);
+      socket.off('game_started', () => {});
     };
   }, [roomId, username]);
 
@@ -69,8 +102,8 @@ const GamePage = () => {
               className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
             >
               <div className={styles.playerName}>
-                {player.username} (Placeholder)
-                  {/* {player.username} {player.username === username && "(You)"} */}
+                {player.username} ({player.role})
+                {/* {player.username} {player.username === username && "(You)"} */}
               </div>
               <div className={styles.playerStatus}>
                 {player.isAlive ? 'Alive' : 'Dead'}

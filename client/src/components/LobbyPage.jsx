@@ -61,12 +61,14 @@ const LobbyPage = () => {
         setReadyPlayers(prev => prev.filter(player => player !== notReadyPlayer));
       };
 
-      const handleGameStarted = () => {
-        navigate(`/game/${roomId}`, { 
-          state: { 
+      const handleGameStarted = (data) => {
+        navigate(`/game/${roomId}`, {
+          state: {
             username,
-            gameSettings
-          } 
+            gameSettings,
+            role: data.role,
+            players: players,
+          }
         });
       };
 

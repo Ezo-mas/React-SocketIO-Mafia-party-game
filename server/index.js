@@ -87,24 +87,71 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('start_game', (roomId) => {
-    io.to(roomId).emit('game_started');
-  });
-
-  socket.on('join_game', (roomId, username) => {
-    socket.join(roomId);
+  socket.on('start_game', (roomId, gameSettings) => {
     const room = rooms[roomId];
     if (room) {
-      io.to(socket.id).emit('role_assigned', 'waiting'); // Placeholder for role assignment logic
-      io.to(socket.id).emit('game_state_update', {
+      const players = room.players;
+      const mafiaCount = Math.max(1, Math.floor(players.length * room.settings.mafiaPercentage / 100));
+      let specialRoles = 0;
+      if (room.settings.detectiveEnabled) specialRoles++;
+      if (room.settings.doctorEnabled) specialRoles++;
+      const civilianCount = Math.max(0, players.length - mafiaCount - specialRoles);
+
+      const roles = [];
+      for (let i = 0; i < mafiaCount; i++) {
+        roles.push('mafia');
+      }
+      if (room.settings.detectiveEnabled) {
+        roles.push('detective');
+      }
+      if (room.settings.doctorEnabled) {
+        roles.push('doctor');
+      }
+      for (let i = 0; i < civilianCount; i++) {
+        roles.push('civilian');
+      }
+
+      for (let i = roles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [roles[i], roles[j]] = [roles[j], roles[i]];
+      }
+
+      // Assign roles to players
+      for (let i = 0; i < players.length; i++) {
+        const player = players[i];
+        const role = roles[i];
+        player.role = role;
+        io.to(player.id).emit('role_assigned', role);
+      }
+
+      room.players = players.map(player => ({ id: player.id, username: player.username, role: player.role }));
+      const gameState = {
         phase: 'night',
         phaseTime: room.settings.nightDuration,
-        players: room.players.map(player => ({ username: player.username, isAlive: true })),
-        role: 'waiting',
+        players: room.players.map(player => ({ id: player.id, username: player.username, isAlive: true, role: player.role })),
         isAlive: true,
+      };
+      io.to(roomId).emit('game_state_update', gameState);
+      players.forEach(player => {
+        io.to(player.id).emit('game_started', { role: player.role });
       });
     }
   });
+
+    socket.on('join_game', (roomId, username) => {
+      socket.join(roomId);
+      const room = rooms[roomId];
+      if (room) {
+        io.to(socket.id).emit('role_assigned', 'waiting');
+        const gameState = {
+          phase: 'night',
+          phaseTime: room.settings.nightDuration,
+          players: room.players.map(player => ({ id: player.id, username: player.username, isAlive: true, role: player.role })),
+          isAlive: true,
+        };
+        io.to(socket.id).emit('game_state_update', gameState);
+      }
+    });
 
   socket.on('disconnect', () => {
     console.log('user disconnected:', socket.id);
