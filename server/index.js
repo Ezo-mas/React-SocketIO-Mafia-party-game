@@ -44,9 +44,6 @@ io.on('connection', (socket) => {
     if (isHost) {
       // Track room hosts in a separate Map
       roomHosts.set(roomId, username);
-
-      // Emit the lobby link to the host
-      io.to(socket.id).emit('lobby_link', lobbyLink);
     }
 
     rooms[roomId].players.push({ id: socket.id, username });
