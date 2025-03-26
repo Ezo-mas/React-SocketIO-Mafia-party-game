@@ -31,7 +31,7 @@ const LobbyPage = () => {
 
   useEffect(() => {
     if (roomId) {
-      setInviteLink(`${window.location.origin}/join/${roomId}}`); // Set the full lobby link
+      setInviteLink(`${window.location.origin}/lobby/${roomId}`); // Set the full lobby link
       
       const isUserHost = location.state?.isHost || false;
       setIsHost(isUserHost);
@@ -115,7 +115,7 @@ const LobbyPage = () => {
 
   const handleInvite = () => {
     if (inviteLink) {
-      navigator.clipboard.writeText("temp")
+      navigator.clipboard.writeText(inviteLink)
         .then(() => {
           setCopyStatus('success');
           setTimeout(() => setCopyStatus(null), 3000);

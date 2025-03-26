@@ -39,14 +39,11 @@ io.on('connection', (socket) => {
 
     //Generating proper lobby link
   const baseURL = "https://mafiaparty.up.railway.app";
-  const lobbyLink = (roomId) => `${baseURL}/join/${roomId}`;
+  const lobbyLink = (roomId) => `${baseURL}/lobby/${roomId}`;
 
     if (isHost) {
       // Track room hosts in a separate Map
       roomHosts.set(roomId, username);
-
-      // Emit the lobby link to the host
-      io.to(socket.id).emit('lobby_link', lobbyLink);
     }
 
     rooms[roomId].players.push({ id: socket.id, username });
