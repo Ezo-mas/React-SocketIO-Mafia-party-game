@@ -31,7 +31,7 @@ const LobbyPage = () => {
 
   useEffect(() => {
     if (roomId) {
-      setInviteLink(roomId);
+      setInviteLink(`${window.location.origin}/join/${roomId}}`); // Set the full lobby link
       
       const isUserHost = location.state?.isHost || false;
       setIsHost(isUserHost);
