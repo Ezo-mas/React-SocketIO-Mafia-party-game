@@ -115,7 +115,7 @@ const LobbyPage = () => {
 
   const handleInvite = () => {
     if (inviteLink) {
-      navigator.clipboard.writeText(inviteLink)
+      navigator.clipboard.writeText("temp")
         .then(() => {
           setCopyStatus('success');
           setTimeout(() => setCopyStatus(null), 3000);
