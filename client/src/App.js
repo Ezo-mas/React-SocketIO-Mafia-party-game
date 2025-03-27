@@ -1,13 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { LobbyProvider } from './context/LobbyContext';
 import TitlePage from './components/TitlePage';
 import LobbyPage from './components/LobbyPage';
 import LandingPage from './components/LandingPage.jsx';
 import AboutPage from './components/AboutPage';
+import socket from './services/socket';
 import GamePage from './components/GamePage';
 
 function App() {
+  useEffect(() => {
+    // Clean up socket connection when app unmounts
+    return () => {
+      console.log('Disconnecting socket on app unmount');
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    };
+  }, []);
+
   return (
     <LobbyProvider>
       <Router>

@@ -1,312 +1,312 @@
 /* LobbyPage.module.css */
 
 .main-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: black;
-    min-height: 100vh;
-    padding: 60px;
-    box-sizing: border-box;
-  }
-  
-  .content {
-    color: #ddd;
-    width: 55%;
-  }
-  
-  .title {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-  }
-  
-  .inviteText {
-    margin-bottom: 20px;
-  }
-  
-  .input {
-    padding: 10px;
-    font-size: 16px;
-    width: 100%;
-    max-width: 300px;
-    border: 2px solid #b74b4b;
-    border-radius: 5px;
-    margin: 10px 0;
-    background-color: black;
-    color: #ddd;
-  }
-  
-  .button {
-    outline: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 20px;
-    font-weight: 400;
-    background: #b74b4b;
-    color: #ddd;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.4s ease;
-    margin: 10px 0;
-  }
-  
-  .button:hover {
-    border-color: #b74b4b;
-    background-color: #ddd;
-    color: #b74b4b;
-  }
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: black;
+  min-height: 100vh;
+  padding: 60px;
+  box-sizing: border-box;
+}
 
-  .button:disabled {
-    background-color: #444;
-    color: #777;
-    cursor: not-allowed;
-    border-color: transparent;
-  }
-  
-  .playersList {
-    margin-top: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .countdownTitle {
-    margin-bottom: 1rem;
-    color: white;
-    font-size: 2.5em;
-    font-weight: bold;
-  }
-
-  .countdownEnding {
-    margin-bottom: 1rem;
-    color: red;
-    font-size: 2.5em;
-    font-weight: bold;
-  }
-
-  .playersTitle {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-  }
-  
-  .playersUl {
-    list-style: none;
-    padding: 0;
-  }
-  
-  .playersLi {
-    padding: 1rem;
-  border-bottom: 1px solid #444;
+.content {
   color: #ddd;
+  width: 55%;
+}
+
+.title {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.inviteText {
+  margin-bottom: 20px;
+}
+
+.input {
+  padding: 10px;
+  font-size: 16px;
+  width: 100%;
+  max-width: 300px;
+  border: 2px solid #b74b4b;
+  border-radius: 5px;
+  margin: 10px 0;
+  background-color: black;
+  color: #ddd;
+}
+
+.button {
+  outline: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 20px;
+  font-weight: 400;
+  background: #b74b4b;
+  color: #ddd;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  margin: 10px 0;
+}
+
+.button:hover {
+  border-color: #b74b4b;
+  background-color: #ddd;
+  color: #b74b4b;
+}
+
+.button:disabled {
+  background-color: #444;
+  color: #777;
+  cursor: not-allowed;
+  border-color: transparent;
+}
+
+.playersList {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.countdownTitle {
+  margin-bottom: 1rem;
+  color: white;
+  font-size: 2.5em;
+  font-weight: bold;
+}
+
+.countdownEnding {
+  margin-bottom: 1rem;
+  color: red;
+  font-size: 2.5em;
+  font-weight: bold;
+}
+
+.playersTitle {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.playersUl {
+  list-style: none;
+  padding: 0;
+}
+
+.player-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  }
-  
-  .copySuccess {
-    color: green;
-    margin-top: 0.5rem;
-  }
-  
-  .copyError {
-    color: red;
-    margin-top: 0.5rem;
-  }
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+}
+
+.copySuccess {
+  color: green;
+  margin-top: 0.5rem;
+}
+
+.copyError {
+  color: red;
+  margin-top: 0.5rem;
+}
 
 .kickButton {
-    background-color: #ff4d4d; /* Raudona spalva */
-    color: #ddd;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 14px;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.4s ease;
-    margin-left: 10px;
-  }
-  
-  .kickButton:hover {
-    border-color: #ff4d4d;
-    background-color: #ddd;
-    color: #ff4d4d;
-  }
+  margin-left: auto; /* Push button to the right */
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
 
-  .kickButton:disabled {
-    background-color: #444;
-    color: #777;
-    cursor: not-allowed;
-  }
-  
-  /* New styles for the ready system */
-  .readyButton {
-    outline: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 20px;
-    font-weight: 400;
-    background: #4CAF50; /* Green */
-    color: #ddd;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.4s ease;
-    margin: 10px 10px 10px 0;
-    width: 150px;
-  }
-  
-  .readyButton:hover {
-    border-color: #4CAF50;
-    background-color: #ddd;
-    color: #4CAF50;
-  }
-  
-  .notReadyButton {
-    outline: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 20px;
-    font-weight: 400;
-    background: #FF9800; /* Orange */
-    color: #ddd;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.4s ease;
-    margin: 10px 10px 10px 0;
-    width: 150px;
-  }
-  
-  .notReadyButton:hover {
-    border-color: #FF9800;
-    background-color: #ddd;
-    color: #FF9800;
-  }
-  
-  .startButton {
-    outline: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 20px;
-    font-weight: 400;
-    background: #2196F3; /* Blue */
-    color: #ddd;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.4s ease;
-    margin: 10px 10px 10px 0;
-    width: 150px;
-  }
-  
-  .startButton:hover {
-    border-color: #2196F3;
-    background-color: #ddd;
-    color: #2196F3;
-  }
-  
-  .startButton:disabled {
-    background-color: #444;
-    color: #777;
-    cursor: not-allowed;
-  }
-  
-  .lockButton {
-    outline: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 20px;
-    font-weight: 400;
-    background: #9C27B0; /* Purple */
-    color: #ddd;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.4s ease;
-    margin: 10px 0;
-    width: 150px;
-  }
-  
-  .lockButton:hover {
-    border-color: #9C27B0;
-    background-color: #ddd;
-    color: #9C27B0;
-  }
-  
-  .lockButton:disabled {
-    background-color: #444;
-    color: #777;
-    cursor: not-allowed;
-  }
-  
-  .readyTag {
-    background-color: #4CAF50;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    margin-left: 10px;
-  }
-  
-  /* Game settings section */
-  .settingsPanel {
-    margin-top: 2rem;
-    padding: 1rem;
-    border: 1px solid #444;
-    border-radius: 5px;
-    background-color: #222;
-  }
-  
-  .settingsDisplay {
-    margin-top: 2rem;
-    padding: 1rem;
-    border: 1px solid #444;
-    border-radius: 5px;
-    background-color: #222;
-  }
-  
-  .settingsTitle {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-    color: #b74b4b;
-  }
-  
-  .settingRow {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-    justify-content: space-between;
-  }
-  
-  .settingInput {
-    padding: 8px;
-    width: 80px;
-    border: 1px solid #b74b4b;
-    border-radius: 4px;
-    background-color: #333;
-    color: #ddd;
-  }
-  
-  .settingSlider {
-    width: 150px;
-    margin: 0 10px;
-  }
-  
-  .settingCheckbox {
-    margin-right: 10px;
-  }
-  
-  .roleDistribution {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px dashed #444;
-  }
-  
-  .roleDistribution h4 {
-    margin-bottom: 10px;
-    color: #ddd;
-  }
-  
-  .roleDistribution ul {
-    list-style: none;
-    padding-left: 10px;
-  }
-  
-  .roleDistribution li {
-    margin-bottom: 5px;
-    color: #ddd;
-  }
-  
+.kickButton:hover {
+  background-color: #d32f2f;
+}
+
+.kickButton:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+/* Ready system styles */
+.readyButton {
+  outline: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 20px;
+  font-weight: 400;
+  background: #4CAF50; /* Green */
+  color: #ddd;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  margin: 10px 10px 10px 0;
+  width: 150px;
+}
+
+.readyButton:hover {
+  border-color: #4CAF50;
+  background-color: #ddd;
+  color: #4CAF50;
+}
+
+.notReadyButton {
+  outline: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 20px;
+  font-weight: 400;
+  background: #FF9800; /* Orange */
+  color: #ddd;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  margin: 10px 10px 10px 0;
+  width: 150px;
+}
+
+.notReadyButton:hover {
+  border-color: #FF9800;
+  background-color: #ddd;
+  color: #FF9800;
+}
+
+.startButton {
+  outline: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 20px;
+  font-weight: 400;
+  background: #2196F3; /* Blue */
+  color: #ddd;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  margin: 10px 10px 10px 0;
+  width: 150px;
+}
+
+.startButton:hover {
+  border-color: #2196F3;
+  background-color: #ddd;
+  color: #2196F3;
+}
+
+.startButton:disabled {
+  background-color: #444;
+  color: #777;
+  cursor: not-allowed;
+}
+
+.lockButton {
+  outline: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 20px;
+  font-weight: 400;
+  background: #9C27B0; /* Purple */
+  color: #ddd;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  margin: 10px 0;
+  width: 150px;
+}
+
+.lockButton:hover {
+  border-color: #9C27B0;
+  background-color: #ddd;
+  color: #9C27B0;
+}
+
+.lockButton:disabled {
+  background-color: #444;
+  color: #777;
+  cursor: not-allowed;
+}
+
+.readyTag {
+  background-color: #4CAF50;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-left: 10px;
+}
+
+/* Game settings section */
+.settingsPanel {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid #444;
+  border-radius: 5px;
+  background-color: #222;
+}
+
+.settingsDisplay {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid #444;
+  border-radius: 5px;
+  background-color: #222;
+}
+
+.settingsTitle {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #b74b4b;
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  justify-content: space-between;
+}
+
+.settingInput {
+  padding: 8px;
+  width: 80px;
+  border: 1px solid #b74b4b;
+  border-radius: 4px;
+  background-color: #333;
+  color: #ddd;
+}
+
+.settingSlider {
+  width: 150px;
+  margin: 0 10px;
+}
+
+.settingCheckbox {
+  margin-right: 10px;
+}
+
+.roleDistribution {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #444;
+}
+
+.roleDistribution h4 {
+  margin-bottom: 10px;
+  color: #ddd;
+}
+
+.roleDistribution ul {
+  list-style: none;
+  padding-left: 10px;
+}
+
+.roleDistribution li {
+  margin-bottom: 5px;
+  color: #ddd;
+}

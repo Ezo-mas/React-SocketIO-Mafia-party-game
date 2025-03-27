@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { io } from 'socket.io-client';
+import socket from '../services/socket';
 import styles from './GamePage.module.css';
 
-const socket = io(process.env.REACT_APP_SERVER_URL);
 
 const GamePage = () => {
   const { roomId } = useParams();

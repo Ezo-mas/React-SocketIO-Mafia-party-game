@@ -21,8 +21,10 @@ Thumbs.db
 .env.local
 .env.localA
 .env.development.local
+.env.development
 .env.test.local
 .env.production.local
+.env.production
 
 # Ignore logs
 npm-debug.log*
