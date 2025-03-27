@@ -8,8 +8,7 @@ WORKDIR /app
 COPY client/package.json client/package-lock.json ./client/
 COPY server/package.json server/package-lock.json ./server/
 
-# Force a clean install of dependencies
-RUN rm -rf /app/client/node_modules /app/server/node_modules
+# Install dependencies for client and server
 RUN npm install --prefix client && npm install --prefix server
 
 # Copy the entire project (after installing dependencies to optimize caching)
@@ -26,3 +25,4 @@ EXPOSE 8080
 
 # Start the backend server
 CMD ["node", "server/index.js"]
+
