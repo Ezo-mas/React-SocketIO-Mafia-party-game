@@ -63,7 +63,11 @@ const LobbyPage = () => {
     };
 
     const handleRoomPlayersList = (playersList, readyPlayersList) => {
-      console.log("Received complete players list:", playersList);
+      if (process.env.NODE_ENV === 'development' && 
+          (players.length !== playersList.length || 
+           !players.every((player, i) => playersList[i] === player))) {
+        console.log("Players list updated:", playersList);
+      }
       setPlayers(playersList);
       setReadyPlayers(readyPlayersList);
     };

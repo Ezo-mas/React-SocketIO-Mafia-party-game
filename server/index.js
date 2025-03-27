@@ -21,11 +21,13 @@ const io = new Server(server, {
  * roomHosts - Maps room IDs to host usernames
  * roomTimers - Stores timer information for each room
  * roomKickedPlayers - Tracks recently kicked players with timestamps
+ * lastBroadcastTime - Tracks when last notified all players in lobby
  */
 const rooms = {};
 const roomHosts = new Map();
 const roomTimers = {};
 const roomKickedPlayers = {};
+const lastBroadcastTime = {};
 
 /**
  * Helper Functions
@@ -38,11 +40,27 @@ function getReadyPlayersList(roomId) {
   return rooms[roomId]?.readyPlayers || [];
 }
 
+
 function broadcastRoomUpdate(roomId) {
+  const now = Date.now();
+  
+  if (!lastBroadcastTime[roomId] || (now - lastBroadcastTime[roomId]) > 2000) {
+    const playersList = getPlayersList(roomId);
+    const readyPlayersList = getReadyPlayersList(roomId);
+    
+    io.to(roomId).emit('room_players_list', playersList, readyPlayersList);
+    lastBroadcastTime[roomId] = now;
+  }
+}
+
+function forceBroadcastRoomUpdate(roomId) {
   const playersList = getPlayersList(roomId);
   const readyPlayersList = getReadyPlayersList(roomId);
+  
   io.to(roomId).emit('room_players_list', playersList, readyPlayersList);
+  lastBroadcastTime[roomId] = Date.now();
 }
+
 
 function isPlayerKicked(roomId, username) {
   if (roomKickedPlayers[roomId] && roomKickedPlayers[roomId][username]) {
@@ -141,7 +159,7 @@ io.on('connection', (socket) => {
     }
 
     // Send current players list and room data
-    broadcastRoomUpdate(roomId);
+    forceBroadcastRoomUpdate(roomId);
     socket.emit('join_room_success', roomId);
   });
 
@@ -149,6 +167,7 @@ io.on('connection', (socket) => {
     if (rooms[roomId]) {
       rooms[roomId].locked = true;
       io.to(roomId).emit('room_locked');
+      forceBroadcastRoomUpdate(roomId);
     }
   });
 
@@ -156,6 +175,7 @@ io.on('connection', (socket) => {
     if (rooms[roomId]) {
       rooms[roomId].locked = false;
       io.to(roomId).emit('room_unlocked');
+      forceBroadcastRoomUpdate(roomId);
     } 
   });
 
@@ -167,6 +187,7 @@ io.on('connection', (socket) => {
     if (room && !room.readyPlayers.includes(username)) {
       room.readyPlayers.push(username);
       io.to(roomId).emit('player_ready', username);
+      forceBroadcastRoomUpdate(roomId);
     }
   });
 
@@ -175,6 +196,7 @@ io.on('connection', (socket) => {
     if (room) {
       room.readyPlayers = room.readyPlayers.filter(player => player !== username);
       io.to(roomId).emit('player_not_ready', username);
+      forceBroadcastRoomUpdate(roomId);
     }
   });
 
@@ -216,7 +238,7 @@ io.on('connection', (socket) => {
     
     // Notify room and update player list
     io.to(roomId).emit('player_kicked', playerToKick);
-    broadcastRoomUpdate(roomId);
+    forceBroadcastRoomUpdate(roomId);
   });
 
   /**
@@ -239,6 +261,7 @@ io.on('connection', (socket) => {
     if (rooms[roomId]) {
       rooms[roomId].settings = newSettings;
       io.to(roomId).emit('settings_updated', newSettings);
+      broadcastRoomUpdate(roomId);
     }
   });
 
@@ -294,7 +317,7 @@ io.on('connection', (socket) => {
         io.to(roomId).emit('player_left', disconnectedPlayer.username);
         
         // Update player list
-        broadcastRoomUpdate(roomId);
+        forceBroadcastRoomUpdate(roomId);
         
         // Clean up empty rooms
         cleanupEmptyRoom(roomId);

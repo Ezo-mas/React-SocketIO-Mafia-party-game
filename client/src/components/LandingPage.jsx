@@ -13,7 +13,7 @@ const LandingPage = () => {
       <div className="container">
         <h2>Mafia Game</h2>
         <div className="image">
-          <img src="OHedN0iv.jpg" alt="Mafia Game Image" />
+          <img src="OHedN0iv.jpg" alt="Mafia Game Logo" />
         </div>
         <div className="description">
           <p>
