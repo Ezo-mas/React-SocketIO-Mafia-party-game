@@ -432,50 +432,57 @@ io.on('connection', (socket) => {
 
   // ---------- GAME FLOW -----------
 
-/**
- * Handle game start
- */
-socket.on('start_game', (roomId, gameSettings) => {
-  const room = rooms[roomId];
-  if (!room) {
-    socket.emit('error', 'Room does not exist.');
-    return;
-  }
+  //Game start
 
-  // Check if the number of players is within the allowed range
-  const playerCount = room.players.length;
-  if (playerCount < 4 || playerCount > 12) {
-    socket.emit('game_start_error', 'The number of players must be between 4 and 12 to start the game.');
-    return;
-  }
+  socket.on('start_game', (roomId, gameSettings) => {
+    const room = rooms[roomId];
+    if (!room) {
+      socket.emit('error', 'Room does not exist.');
+      return;
+    }
+  
+    /*
+    // Check if the number of players is within the allowed range
+    const playerCount = room.players.length;
+    if (playerCount < 4 || playerCount > 12) {
+      socket.emit('game_start_error', 'The number of players must be between 4 and 12 to start the game.');
+      return;
+    }
+  */
 
-  // Store settings for the game
-  rooms[roomId].settings = gameSettings || rooms[roomId].settings;
-
-  // Emit countdown to all players
-  const countdownDuration = 5; // 5 seconds
-  io.to(roomId).emit('start_countdown', countdownDuration);
-
-  // Assign roles after countdown
-  setTimeout(() => {
-    const playersWithRoles = assignRolesToPlayers(roomId);
-    io.to(roomId).emit('assign_roles', playersWithRoles);
-
-    // Start the game after roles are shown
+    // Store settings for the game
+    rooms[roomId].settings = gameSettings || rooms[roomId].settings;
+  
+    // Emit countdown to all players
+    const countdownDuration = 5; // 5 seconds
+    io.to(roomId).emit('start_countdown', countdownDuration);
+  
+    // Assign roles after countdown
     setTimeout(() => {
-      const initialGameState = {
-        phase: 'night',
-        phaseTime: room.settings.nightDuration,
-        players: playersWithRoles.map(player => ({
-          username: player.username,
-          role: player.role,
-          isAlive: true,
-        })),
-      };
-      io.to(roomId).emit('game_started', initialGameState);
-    }, 2000); // 7 seconds for role display
-  }, countdownDuration * 1000); // Wait for countdown to finish
-});
+      const playersWithRoles = assignRolesToPlayers(roomId);
+  
+      // Send each player their role individually
+      playersWithRoles.forEach((player) => {
+        const playerSocket = io.sockets.sockets.get(player.id);
+        if (playerSocket) {
+          playerSocket.emit('assign_role', { role: player.role });
+        }
+      });
+  
+      // Broadcast the game start event to all players
+      setTimeout(() => {
+        const initialGameState = {
+          phase: 'night',
+          phaseTime: room.settings.nightDuration,
+          players: playersWithRoles.map(player => ({
+            username: player.username,
+            isAlive: true, // Do not include roles here
+          })),
+        };
+        io.to(roomId).emit('game_started', initialGameState);
+      }, 2000); // 7 seconds for role display
+    }, countdownDuration * 1000); // Wait for countdown to finish
+  });
 
   /**
    * Handle player joining a game in progress

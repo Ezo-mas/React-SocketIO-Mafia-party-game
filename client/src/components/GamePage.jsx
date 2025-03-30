@@ -6,11 +6,11 @@ import styles from './GamePage.module.css';
 const GamePage = () => {
   const { roomId } = useParams();
   const location = useLocation();
-  const { username, gameSettings } = location.state || { username: 'Guest', gameSettings: {} };
+  const { username } = location.state || { username: 'Guest' };
   const [gameState, setGameState] = useState({
     phase: 'night', // 'day' or 'night'
     phaseTime: 0, // time remaining in current phase
-    players: [], // Array of players with their roles
+    players: [], // Array of players (without roles)
     role: 'waiting', // Player's assigned role
     isAlive: true,
   });
@@ -38,10 +38,10 @@ const GamePage = () => {
       }, 1000);
     };
 
-    const handleRoleAssigned = (playersWithRoles) => {
+    const handleRoleAssigned = ({ role }) => {
       setGameState((prev) => ({
         ...prev,
-        players: playersWithRoles,
+        role, // Update only the current player's role
       }));
       setShowRoles(true);
 
@@ -61,12 +61,12 @@ const GamePage = () => {
     };
 
     socket.on('start_countdown', handleCountdown);
-    socket.on('assign_roles', handleRoleAssigned);
+    socket.on('assign_role', handleRoleAssigned); // Listen for individual role assignment
     socket.on('game_started', handleGameStarted);
 
     return () => {
       socket.off('start_countdown', handleCountdown);
-      socket.off('assign_roles', handleRoleAssigned);
+      socket.off('assign_role', handleRoleAssigned);
       socket.off('game_started', handleGameStarted);
     };
   }, [roomId, username]);
@@ -82,15 +82,13 @@ const GamePage = () => {
   }
 
   if (showRoles) {
-    // Render role cards with fade-out animation
+    // Render role card for the current player
     return (
       <div className={`${styles.roleCardsContainer} ${isFadingOut ? styles.fadingOut : ''}`}>
-        {gameState.players.map((player, index) => (
-          <div key={index} className={styles.roleCard}>
-            <h2>{player.username}</h2>
-            <p className={styles.role}>{player.role}</p>
-          </div>
-        ))}
+        <div className={styles.roleCard}>
+          <h2>Your Role</h2>
+          <p className={styles.role}>{gameState.role}</p>
+        </div>
       </div>
     );
   }
