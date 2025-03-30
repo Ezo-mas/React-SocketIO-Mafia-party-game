@@ -10,13 +10,15 @@ const GamePage = () => {
   const [gameState, setGameState] = useState({
     phase: 'night', // 'day' or 'night'
     phaseTime: 0, // time remaining in current phase
-    players: [],
-    role: 'waiting', // player's assigned role
+    players: [], // Array of players with their roles
+    role: 'waiting', // Player's assigned role
     isAlive: true,
   });
 
   const [showContent, setShowContent] = useState(false); // State to control content visibility
   const [countdown, setCountdown] = useState(5); // Countdown timer state
+  const [showRoles, setShowRoles] = useState(false); // State to show role cards
+  const [isFadingOut, setIsFadingOut] = useState(false); // State to trigger fade-out animation
 
   useEffect(() => {
     // Countdown logic
@@ -49,6 +51,16 @@ const GamePage = () => {
         ...prev,
         role,
       }));
+      setShowRoles(true); // Show role cards when roles are assigned
+
+      // Trigger fade-out and hide role cards after 7 seconds
+      setTimeout(() => {
+        setIsFadingOut(true); // Start fade-out animation
+        setTimeout(() => {
+          setShowRoles(false); // Transition back to the main game screen
+          setIsFadingOut(false); // Reset fade-out state
+        }, 1000); // Match the duration of the fade-out animation
+      }, 7000);
     };
 
     socket.on('game_state_update', handleGameStateUpdate);
@@ -66,6 +78,20 @@ const GamePage = () => {
       <div className={styles.countdownContainer}>
         <h1>Game Starting In...</h1>
         <h2 className={countdown <= 3 ? styles.redCountdown : ''}>{countdown} seconds</h2>
+      </div>
+    );
+  }
+
+  if (showRoles) {
+    // Render role cards with fade-out animation
+    return (
+      <div className={`${styles.roleCardsContainer} ${isFadingOut ? styles.fadingOut : ''}`}>
+        {gameState.players.map((player, index) => (
+          <div key={index} className={styles.roleCard}>
+            <h2>{player.username}</h2>
+            <p className={styles.role}>{player.role}</p>
+          </div>
+        ))}
       </div>
     );
   }
@@ -95,7 +121,7 @@ const GamePage = () => {
               className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
             >
               <div className={styles.playerName}>
-                {player.username} (Placeholder)[]
+                {player.username} (Placeholder)
               </div>
               <div className={styles.playerStatus}>
                 {player.isAlive ? 'Alive' : 'Dead'}
