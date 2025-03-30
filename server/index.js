@@ -128,6 +128,56 @@ function cleanupEmptyRoom(roomId) {
   return false;
 }
 
+/**
+ * Assign random roles to players in a room
+ * @param {string} roomId - The ID of the room
+ * @returns {Array} - List of players with their assigned roles
+ */
+function assignRolesToPlayers(roomId) {
+  const room = rooms[roomId];
+  if (!room) return [];
+
+  const players = [...room.players]; // Copy the players array
+  const playerCount = players.length;
+
+  // Calculate the number of each role
+  let mafiaCount = Math.floor((room.settings.mafiaPercentage / 100) * playerCount);
+  let detectiveCount = room.settings.detectiveEnabled ? 1 : 0;
+  let doctorCount = room.settings.doctorEnabled ? 1 : 0;
+
+  // Ensure the total number of roles does not exceed the number of players
+  if (mafiaCount + detectiveCount + doctorCount > playerCount) {
+    // Adjust roles dynamically if there are too few players
+    if (mafiaCount > 0) mafiaCount--;
+    if (detectiveCount > 0 && mafiaCount + detectiveCount + doctorCount > playerCount) detectiveCount--;
+    if (doctorCount > 0 && mafiaCount + detectiveCount + doctorCount > playerCount) doctorCount--;
+  }
+
+  // Calculate the remaining civilians
+  const civilianCount = playerCount - mafiaCount - detectiveCount - doctorCount;
+
+  // Create a list of roles
+  const roles = [
+    ...Array(mafiaCount).fill('Mafia'),
+    ...Array(detectiveCount).fill('Detective'),
+    ...Array(doctorCount).fill('Doctor'),
+    ...Array(civilianCount).fill('Civilian'),
+  ];
+
+  // Shuffle the roles
+  for (let i = roles.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [roles[i], roles[j]] = [roles[j], roles[i]];
+  }
+
+  // Assign roles to players
+  players.forEach((player, index) => {
+    player.role = roles[index];
+  });
+
+  return players;
+}
+
 // ==============================
 // Global Timer Updates
 // ==============================
@@ -382,16 +432,50 @@ io.on('connection', (socket) => {
 
   // ---------- GAME FLOW -----------
 
-  /**
-   * Handle game start
-   */
-  socket.on('start_game', (roomId, gameSettings) => {
-    if (rooms[roomId]) {
-      // Store settings for the game
-      rooms[roomId].settings = gameSettings || rooms[roomId].settings;
-      io.to(roomId).emit('game_started');
-    }
-  });
+/**
+ * Handle game start
+ */
+socket.on('start_game', (roomId, gameSettings) => {
+  const room = rooms[roomId];
+  if (!room) {
+    socket.emit('error', 'Room does not exist.');
+    return;
+  }
+
+  // Check if the number of players is within the allowed range
+  const playerCount = room.players.length;
+  if (playerCount < 4 || playerCount > 12) {
+    socket.emit('game_start_error', 'The number of players must be between 4 and 12 to start the game.');
+    return;
+  }
+
+  // Store settings for the game
+  rooms[roomId].settings = gameSettings || rooms[roomId].settings;
+
+  // Emit countdown to all players
+  const countdownDuration = 5; // 5 seconds
+  io.to(roomId).emit('start_countdown', countdownDuration);
+
+  // Assign roles after countdown
+  setTimeout(() => {
+    const playersWithRoles = assignRolesToPlayers(roomId);
+    io.to(roomId).emit('assign_roles', playersWithRoles);
+
+    // Start the game after roles are shown
+    setTimeout(() => {
+      const initialGameState = {
+        phase: 'night',
+        phaseTime: room.settings.nightDuration,
+        players: playersWithRoles.map(player => ({
+          username: player.username,
+          role: player.role,
+          isAlive: true,
+        })),
+      };
+      io.to(roomId).emit('game_started', initialGameState);
+    }, 2000); // 7 seconds for role display
+  }, countdownDuration * 1000); // Wait for countdown to finish
+});
 
   /**
    * Handle player joining a game in progress
