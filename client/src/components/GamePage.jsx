@@ -26,22 +26,20 @@ const GamePage = () => {
 
     // Listen for server events
     const handleCountdown = (countdownDuration) => {
+      console.log("Countdown started with duration:", countdownDuration);
       setCountdown(countdownDuration);
-
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === 1) {
-            clearInterval(timer);
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    };
+  
+    const handleCountdownUpdate = (remainingTime) => {
+      console.log("Countdown update:", remainingTime);
+      setCountdown(remainingTime);
     };
 
     const handleRoleAssigned = ({ role }) => {
+      console.log("Role assigned:", role);
       setGameState((prev) => ({
         ...prev,
-        role, // Update only the current player's role
+        role,
       }));
       setShowRoles(true);
 
@@ -57,15 +55,18 @@ const GamePage = () => {
     };
 
     const handleGameStarted = (newGameState) => {
+      console.log("Game started with state:", newGameState);
       setGameState(newGameState);
     };
 
     socket.on('start_countdown', handleCountdown);
-    socket.on('assign_role', handleRoleAssigned); // Listen for individual role assignment
+    socket.on('countdown_update', handleCountdownUpdate); // Listen for countdown updates
+    socket.on('assign_role', handleRoleAssigned);
     socket.on('game_started', handleGameStarted);
 
     return () => {
       socket.off('start_countdown', handleCountdown);
+      socket.off('countdown_update', handleCountdownUpdate);
       socket.off('assign_role', handleRoleAssigned);
       socket.off('game_started', handleGameStarted);
     };

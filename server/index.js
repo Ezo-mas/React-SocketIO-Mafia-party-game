@@ -452,37 +452,50 @@ io.on('connection', (socket) => {
 
     // Store settings for the game
     rooms[roomId].settings = gameSettings || rooms[roomId].settings;
+
+    const initialState = {
+      transitioning: true,
+      phase: 'night',
+      phaseTime: room.settings.nightDuration,
+      players: room.players.map(player => ({
+        username: player.username,
+        isAlive: true
+      })),
+    };
+
+    io.to(roomId).emit('game_started', initialState);
   
-    // Emit countdown to all players
-    const countdownDuration = 5; // 5 seconds
-    io.to(roomId).emit('start_countdown', countdownDuration);
   
-    // Assign roles after countdown
-    setTimeout(() => {
-      const playersWithRoles = assignRolesToPlayers(roomId);
-  
-      // Send each player their role individually
-      playersWithRoles.forEach((player) => {
-        const playerSocket = io.sockets.sockets.get(player.id);
-        if (playerSocket) {
-          playerSocket.emit('assign_role', { role: player.role });
-        }
-      });
-  
-      // Broadcast the game start event to all players
+      // Broadcast the current countdown value to all clients in the room
       setTimeout(() => {
-        const initialGameState = {
-          phase: 'night',
-          phaseTime: room.settings.nightDuration,
-          players: playersWithRoles.map(player => ({
-            username: player.username,
-            isAlive: true, // Do not include roles here
-          })),
-        };
-        io.to(roomId).emit('game_started', initialGameState);
-      }, 2000); // 7 seconds for role display
-    }, countdownDuration * 1000); // Wait for countdown to finish
-  });
+        // NOW start the countdown
+        const countdownDuration = 5; // 5 seconds
+        io.to(roomId).emit('start_countdown', countdownDuration);
+        
+        let remainingTime = countdownDuration;
+        io.to(roomId).emit('countdown_update', remainingTime);
+        
+        const countdownInterval = setInterval(() => {
+          remainingTime--;
+          io.to(roomId).emit('countdown_update', remainingTime);
+          
+          if (remainingTime <= 0) {
+            clearInterval(countdownInterval);
+            
+            // Continue with role assignment and game flow...
+            const playersWithRoles = assignRolesToPlayers(roomId);
+      
+        // Send each player their role individually
+        playersWithRoles.forEach((player) => {
+          const playerSocket = io.sockets.sockets.get(player.id);
+          if (playerSocket) {
+            playerSocket.emit('assign_role', { role: player.role });
+          }
+        });
+      }
+    }, 1000);
+  }, 1000);
+ }); // Short delay to ensure everyone is on the GamePag
 
   /**
    * Handle player joining a game in progress
