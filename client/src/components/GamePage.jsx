@@ -3,7 +3,6 @@ import { useParams, useLocation } from 'react-router-dom';
 import socket from '../services/socket';
 import styles from './GamePage.module.css';
 
-
 const GamePage = () => {
   const { roomId } = useParams();
   const location = useLocation();
@@ -15,6 +14,24 @@ const GamePage = () => {
     role: 'waiting', // player's assigned role
     isAlive: true,
   });
+
+  const [showContent, setShowContent] = useState(false); // State to control content visibility
+  const [countdown, setCountdown] = useState(5); // Countdown timer state
+
+  useEffect(() => {
+    // Countdown logic
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === 1) {
+          clearInterval(timer);
+          setShowContent(true); // Show the main content after countdown
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer); // Cleanup timer on component unmount
+  }, []);
 
   useEffect(() => {
     // Join game room
@@ -28,7 +45,7 @@ const GamePage = () => {
 
     const handleRoleAssigned = (role) => {
       console.log('Role assigned:', role);
-      setGameState(prev => ({
+      setGameState((prev) => ({
         ...prev,
         role,
       }));
@@ -42,6 +59,16 @@ const GamePage = () => {
       socket.off('role_assigned', handleRoleAssigned);
     };
   }, [roomId, username]);
+
+  if (!showContent) {
+    // Render the countdown timer
+    return (
+      <div className={styles.countdownContainer}>
+        <h1>Game Starting In...</h1>
+        <h2 className={countdown <= 3 ? styles.redCountdown : ''}>{countdown} seconds</h2>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.gameContainer}>
@@ -63,13 +90,12 @@ const GamePage = () => {
       <div className={styles.mainContent}>
         <div className={styles.playerGrid}>
           {gameState.players.map((player, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
             >
               <div className={styles.playerName}>
-                {player.username} (Placeholder)
-                  {/* {player.username} {player.username === username && "(You)"} */}
+                {player.username} (Placeholder)[]
               </div>
               <div className={styles.playerStatus}>
                 {player.isAlive ? 'Alive' : 'Dead'}

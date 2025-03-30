@@ -104,3 +104,29 @@
     color: #b74b4b;
     margin-bottom: 15px;
   }
+
+  .countdownContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: black;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  .countdownContainer h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .countdownContainer h2 {
+    font-size: 3rem;
+    font-weight: bold;
+  }
+
+  .redCountdown {
+    color: red;
+    transition: color 0.3s ease;
+  }
