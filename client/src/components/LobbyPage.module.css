@@ -310,3 +310,24 @@
   margin-bottom: 5px;
   color: #ddd;
 }
+
+.settingsDisplay ul {
+  list-style: none;
+  padding-left: 10px;
+  margin: 0;
+}
+
+.settingsDisplay li {
+  margin-bottom: 8px;
+  color: #ddd;
+  position: relative;
+  padding-left: 20px;
+}
+
+.settingsDisplay li:before {
+  content: "•";
+  color: #b74b4b;
+  position: absolute;
+  left: 0;
+  font-size: 18px;
+}

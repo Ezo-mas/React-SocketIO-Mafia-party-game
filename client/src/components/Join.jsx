@@ -1,27 +1,56 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
+import socket from '../services/socket';
 import { LobbyContext } from '../context/LobbyContext';
 import styles from './TitlePage.module.css';
 
-const socket = io(process.env.REACT_APP_SERVER_URL);
 
 const Join = () => {
     const [name, setName] = useState('');
     const [roomId, setRoomId] = useState('');
+    const [joinError, setJoinError] = useState('');
     const navigate = useNavigate();
     const { addPlayer } = useContext(LobbyContext);
 
-    const handleJoinRoom = () => {
-        if (name.trim() && roomId.trim()) {
-            addPlayer(name);
-            socket.emit('join_room', roomId, name, false);
-            navigate(`/lobby/${roomId}`, { state: { username: name, isHost: false } });
-        } else if (!name.trim()) {
+    useEffect(() => {
+        const handleRoomLockedError = (lockedRoomId) => {
+          console.log("Room locked error received:", lockedRoomId);
+          setJoinError(`Room ${lockedRoomId} is locked and cannot be joined.`);
+          setTimeout(() => setJoinError(''), 5000);
+        };
+    
+        const handleJoinRoomSuccess = (joinedRoomId) => {
+          console.log("Join room success received:", joinedRoomId);
+          navigate(`/lobby/${joinedRoomId}`, { state: { username: name, isHost: false } });
+        };
+    
+        // Setup and cleanup socket listeners
+        socket.off('room_locked_error');
+        socket.off('join_room_success');
+        socket.on('room_locked_error', handleRoomLockedError);
+        socket.on('join_room_success', handleJoinRoomSuccess);
+    
+        return () => {
+          socket.off('room_locked_error', handleRoomLockedError);
+          socket.off('join_room_success', handleJoinRoomSuccess);
+        };
+      }, [navigate, name]);
+
+    const handleJoinRoom = () => {       
+        setJoinError('');
+        
+        if (!name.trim()) {
             alert('Please enter your name.');
-        } else if (!roomId.trim()) {
-            alert('Please enter the room ID.');
+            return;
         }
+        
+        if (!roomId.trim()) {
+            alert('Please enter the room ID.');
+            return;
+        }
+        
+        addPlayer(name);
+        socket.emit('join_room', roomId, name, false);
     };
 
     return (
@@ -65,6 +94,12 @@ const Join = () => {
                                 required
                             />
                         </div>
+
+                        {joinError && (
+                            <div className={styles.errorMessage}>
+                                {joinError}
+                            </div>
+                        )}
 
                         <button onClick={handleJoinRoom} className={styles.button}>
                             Join Room

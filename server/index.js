@@ -4,7 +4,9 @@ const cors = require('cors');
 const path = require('path');
 const { Server } = require('socket.io');
 
-// App and server initialization
+// ==============================
+// App and Server Initialization
+// ==============================
 const app = express();
 app.use(cors());
 app.use(express.static(path.join(__dirname, "../client/build")));
@@ -14,14 +16,16 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
+// ==============================
+// Game State Management
+// ==============================
 /**
- * Game state storage
- * ==================
- * rooms - Stores all active game rooms with players and settings
- * roomHosts - Maps room IDs to host usernames
- * roomTimers - Stores timer information for each room
- * roomKickedPlayers - Tracks recently kicked players with timestamps
- * lastBroadcastTime - Tracks when last notified all players in lobby
+ * Game state storage:
+ * - rooms: Stores all active game rooms with players and settings
+ * - roomHosts: Maps room IDs to host usernames
+ * - roomTimers: Stores timer information for each room
+ * - roomKickedPlayers: Tracks recently kicked players with timestamps
+ * - lastBroadcastTime: Tracks when last notified all players in lobby
  */
 const rooms = {};
 const roomHosts = new Map();
@@ -29,18 +33,41 @@ const roomTimers = {};
 const roomKickedPlayers = {};
 const lastBroadcastTime = {};
 
+// ==============================
+// Helper Functions
+// ==============================
+
 /**
- * Helper Functions
+ * Get list of player usernames in a room
  */
 function getPlayersList(roomId) {
   return rooms[roomId]?.players.map(player => player.username) || [];
 }
 
+/**
+ * Get list of ready players in a room
+ */
 function getReadyPlayersList(roomId) {
   return rooms[roomId]?.readyPlayers || [];
 }
 
+/**
+ * Broadcast timer information to all players in a room
+ * with rate limiting to prevent excessive updates
+ */
+function broadcastTimer(roomId) {
+  if (roomTimers[roomId]) {
+    const now = Date.now();
+    if (!roomTimers[roomId].lastBroadcast || (now - roomTimers[roomId].lastBroadcast) > 2000) {
+      io.to(roomId).emit('lobby_timer', roomTimers[roomId].startTime, roomTimers[roomId].duration);
+      roomTimers[roomId].lastBroadcast = now;
+    }
+  }
+}
 
+/**
+ * Broadcast room player updates with rate limiting
+ */
 function broadcastRoomUpdate(roomId) {
   const now = Date.now();
   
@@ -53,15 +80,24 @@ function broadcastRoomUpdate(roomId) {
   }
 }
 
+/**
+ * Force broadcast room updates even if rate limited recently
+ */
 function forceBroadcastRoomUpdate(roomId) {
-  const playersList = getPlayersList(roomId);
-  const readyPlayersList = getReadyPlayersList(roomId);
+  const now = Date.now();
   
-  io.to(roomId).emit('room_players_list', playersList, readyPlayersList);
-  lastBroadcastTime[roomId] = Date.now();
+  if (!lastBroadcastTime[roomId] || (now - lastBroadcastTime[roomId]) > 500) {
+    const playersList = getPlayersList(roomId);
+    const readyPlayersList = getReadyPlayersList(roomId);
+    
+    io.to(roomId).emit('room_players_list', playersList, readyPlayersList);
+    lastBroadcastTime[roomId] = now;
+  }
 }
 
-
+/**
+ * Check if a player was kicked recently and is still banned
+ */
 function isPlayerKicked(roomId, username) {
   if (roomKickedPlayers[roomId] && roomKickedPlayers[roomId][username]) {
     const kickTime = roomKickedPlayers[roomId][username];
@@ -77,6 +113,9 @@ function isPlayerKicked(roomId, username) {
   return false;
 }
 
+/**
+ * Remove empty rooms and associated data
+ */
 function cleanupEmptyRoom(roomId) {
   if (rooms[roomId] && rooms[roomId].players.length === 0) {
     delete rooms[roomId];
@@ -89,18 +128,29 @@ function cleanupEmptyRoom(roomId) {
   return false;
 }
 
-/**
- * Socket.IO Connection Handler
- */
+// ==============================
+// Global Timer Updates
+// ==============================
+setInterval(() => {
+  for (const roomId in rooms) {
+    if (rooms[roomId] && rooms[roomId].players.length > 0) {
+      broadcastTimer(roomId);
+    }
+  }
+}, 5000); 
+
+// ==============================
+// Socket.IO Connection Handler
+// ==============================
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
 
+  // ---------- ROOM MANAGEMENT -----------
+
   /**
-   * Room Management
+   * Handle player joining a room
    */
   socket.on('join_room', (roomId, username, isHost) => {
-    console.log(`join_room event received: roomId=${roomId}, username=${username}, isHost=${isHost}`);
-    
     // Check if room exists and is locked
     if (rooms[roomId] && rooms[roomId].locked) {
       socket.emit('room_locked_error', roomId);
@@ -160,11 +210,45 @@ io.on('connection', (socket) => {
       roomHosts.set(roomId, username);
     }
 
-    // Send current players list and room data
-    forceBroadcastRoomUpdate(roomId);
-    socket.emit('join_room_success', roomId);
+    // Send data to client with a small delay to ensure client-side setup
+    setTimeout(() => {
+      // Send the player list to all clients
+      forceBroadcastRoomUpdate(roomId);
+      
+      // Send timer info directly to this socket
+      if (roomTimers[roomId]) {
+        socket.emit('lobby_timer', roomTimers[roomId].startTime, roomTimers[roomId].duration);
+      } else {
+        const defaultStartTime = Date.now();
+        const defaultDuration = 60000;
+        roomTimers[roomId] = {
+          startTime: defaultStartTime,
+          duration: defaultDuration,
+          lastSent: Date.now()
+        };
+        socket.emit('lobby_timer', defaultStartTime, defaultDuration);
+      }
+      
+      // Send player list directly to the joining player
+      socket.emit('room_players_list', getPlayersList(roomId), getReadyPlayersList(roomId));
+      
+      // Send join success last
+      socket.emit('join_room_success', roomId);
+    }, 200);
   });
 
+  /**
+   * Handle request for room player list
+   */
+  socket.on('get_room_players', (roomId) => {
+    if (rooms[roomId]) {
+      socket.emit('room_players_list', getPlayersList(roomId), getReadyPlayersList(roomId));
+    }
+  });
+
+  /**
+   * Handle room locking (prevent new players from joining)
+   */
   socket.on('lock_room', (roomId) => {
     if (rooms[roomId]) {
       rooms[roomId].locked = true;
@@ -173,6 +257,9 @@ io.on('connection', (socket) => {
     }
   });
 
+  /**
+   * Handle room unlocking (allow new players to join)
+   */
   socket.on('unlock_room', (roomId) => {
     if (rooms[roomId]) {
       rooms[roomId].locked = false;
@@ -181,8 +268,10 @@ io.on('connection', (socket) => {
     } 
   });
 
+  // ---------- PLAYER STATUS -----------
+
   /**
-   * Player Status Events
+   * Handle player ready state
    */
   socket.on('player_ready', (roomId, username) => {
     const room = rooms[roomId];
@@ -193,6 +282,9 @@ io.on('connection', (socket) => {
     }
   });
 
+  /**
+   * Handle player not ready state
+   */
   socket.on('player_not_ready', (roomId, username) => {
     const room = rooms[roomId];
     if (room) {
@@ -202,6 +294,9 @@ io.on('connection', (socket) => {
     }
   });
 
+  /**
+   * Handle kicking a player from room
+   */
   socket.on('kick_player', (roomId, playerToKick) => {
     console.log(`Kick player request received: ${playerToKick} from room ${roomId}`);
     
@@ -243,21 +338,39 @@ io.on('connection', (socket) => {
     forceBroadcastRoomUpdate(roomId);
   });
 
+  // ---------- TIMER MANAGEMENT -----------
+
   /**
-   * Timer Events
+   * Handle request for lobby timer information
    */
   socket.on('get_lobby_timer', (roomId) => {
-    if (roomTimers[roomId]) {
-      socket.emit('lobby_timer', roomTimers[roomId].startTime, roomTimers[roomId].duration);
-    } else {
-      const defaultStartTime = Date.now();
-      const defaultDuration = 60000;
-      socket.emit('lobby_timer', defaultStartTime, defaultDuration);
+    const now = Date.now();
+    
+    // Rate limiting to prevent excessive updates
+    if (!roomTimers[roomId] || !roomTimers[roomId].lastSent || 
+        (now - roomTimers[roomId].lastSent > 1000)) {
+      
+      if (roomTimers[roomId]) {
+        socket.emit('lobby_timer', roomTimers[roomId].startTime, roomTimers[roomId].duration);
+        roomTimers[roomId].lastSent = now;
+      } else {
+        const defaultStartTime = Date.now();
+        const defaultDuration = 60000;
+        socket.emit('lobby_timer', defaultStartTime, defaultDuration);
+        
+        roomTimers[roomId] = {
+          startTime: defaultStartTime,
+          duration: defaultDuration,
+          lastSent: now
+        };
+      }
     }
   });
 
+  // ---------- GAME SETTINGS -----------
+
   /**
-   * Game Settings
+   * Handle game settings updates
    */
   socket.on('update_settings', (roomId, newSettings) => {
     if (rooms[roomId]) {
@@ -267,22 +380,27 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ---------- GAME FLOW -----------
+
   /**
-   * Game Flow
+   * Handle game start
    */
   socket.on('start_game', (roomId, gameSettings) => {
     if (rooms[roomId]) {
-      // Optional: Store settings for the game
+      // Store settings for the game
       rooms[roomId].settings = gameSettings || rooms[roomId].settings;
       io.to(roomId).emit('game_started');
     }
   });
 
+  /**
+   * Handle player joining a game in progress
+   */
   socket.on('join_game', (roomId, username) => {
     socket.join(roomId);
     const room = rooms[roomId];
     if (room) {
-      // In a real implementation, you'd assign roles and send actual game state
+      // Send initial game state to player
       io.to(socket.id).emit('role_assigned', 'waiting');
       io.to(socket.id).emit('game_state_update', {
         phase: 'night',
@@ -297,8 +415,10 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ---------- CONNECTION MANAGEMENT -----------
+
   /**
-   * Connection Management
+   * Handle player disconnection
    */
   socket.on('disconnect', () => {
     console.log('user disconnected:', socket.id);
@@ -328,12 +448,16 @@ io.on('connection', (socket) => {
   });
 });
 
-// SPA route handler
+// ==============================
+// SPA Route Handler
+// ==============================
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/build/index.html"));
 });
 
-// Start server
+// ==============================
+// Start Server
+// ==============================
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

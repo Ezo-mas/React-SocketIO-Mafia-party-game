@@ -7,9 +7,9 @@ import AboutPage from './components/AboutPage';
 import GamePage from './components/GamePage'; 
 import JoinRoom from './components/Join';
 import CreateRoom from './components/Create';
-import { io } from 'socket.io-client';
+import socket from './services/socket';
 
-const socket = io(process.env.REACT_APP_SERVER_URL); // Define the socket instance
+
 
 function App() {
   useEffect(() => {
@@ -36,16 +36,6 @@ function App() {
                 <div className="link"><Link to="/about" id="about-link">About Us</Link></div>
                 <div className="link"><Link to="/joinRoom" className="link">Join</Link></div>
                 <div className="link"><Link to="/createRoom" className="link">Create</Link></div>
-              </div>
-              <i className="fa-solid fa-bars hamburg" onClick={() => window.hamburg()}></i>
-            </div>
-            <div className="dropdown">
-              <div className="links">
-                <Link to="/">Home</Link>
-                <Link to="/about">About Us</Link>
-                <Link to="/joinRoom" className="link">Join Room</Link>
-                <Link to="/createRoom" className="link">Create Room</Link>
-                <i className="fa-solid fa-xmark cancel" onClick={() => window.cancel()}></i>
               </div>
             </div>
           </nav>

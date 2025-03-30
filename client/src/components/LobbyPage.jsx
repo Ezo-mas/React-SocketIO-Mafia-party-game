@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { LobbyContext } from '../context/LobbyContext';
 import socket from '../services/socket';
@@ -40,12 +40,30 @@ const LobbyPage = () => {
     civilianCount: 0,
   });
 
-  // Main useEffect for socket events and room setup
+  // refs to track current values
+  const playersRef = useRef(players);
+  const usernameRef = useRef(username);
+  const gameSettingsRef = useRef(gameSettings);
+  
+  // refs updated with latest values
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+  
+  useEffect(() => {
+    gameSettingsRef.current = gameSettings;
+  }, [gameSettings]);
+  
+  useEffect(() => {
+    usernameRef.current = username;
+  }, [username]);
+
+  
+  // First effect - Room initialization
   useEffect(() => {
     if (!roomId) return;
     
-    // Initialize room
-    setInviteLink(`${window.location.origin}/lobby/${roomId}`);
+    setInviteLink(roomId);
     const isUserHost = location.state?.isHost || false;
     setIsHost(isUserHost);
     
@@ -54,6 +72,23 @@ const LobbyPage = () => {
     }
     
     socket.emit('join_room', roomId, username, isUserHost);
+
+    const updateTimer = setTimeout(() => {  
+      socket.emit('get_room_players', roomId);
+    }, 500);
+    
+    return () => {
+      clearTimeout(updateTimer);
+    };
+    
+  }, [roomId, username, host, location.state, setRoomHost]);
+
+
+  // Main useEffect for socket events and room setup
+  useEffect(() => {
+    if (!roomId) return;
+    
+
     socket.emit('get_lobby_timer', roomId);
 
     // Socket event handlers
@@ -94,8 +129,8 @@ const LobbyPage = () => {
     const handleGameStarted = () => {
       navigate(`/game/${roomId}`, { 
         state: { 
-          username,
-          gameSettings
+          username: usernameRef.current,
+          gameSettings: gameSettingsRef.current
         } 
       });
     };
@@ -112,6 +147,18 @@ const LobbyPage = () => {
     const handleRoomLocked = () => setRoomLocked(true);
     const handleRoomUnlocked = () => setRoomLocked(false);
     const handleSettingsUpdated = (newSettings) => setGameSettings(newSettings);
+
+    socket.off('room_players_list');
+    socket.off('player_joined');
+    socket.off('player_ready');
+    socket.off('player_not_ready');
+    socket.off('game_started');
+    socket.off('room_locked');
+    socket.off('room_unlocked');
+    socket.off('settings_updated');
+    socket.off('lobby_timer');
+    socket.off('you_were_kicked');
+    socket.off('player_kicked');
 
     // Register socket event listeners
     socket.on('room_players_list', handleRoomPlayersList);
@@ -140,7 +187,7 @@ const LobbyPage = () => {
       socket.off('you_were_kicked', handleYouWereKicked);
       socket.off('player_kicked', handlePlayerKicked);
     };
-  }, [roomId, username, addPlayer, players, navigate, gameSettings, host, location.state, setPlayers, setRoomHost]);
+  }, [roomId, navigate, addPlayer]);
 
   // Calculate civilian count based on other roles
   useEffect(() => {
@@ -281,9 +328,9 @@ const LobbyPage = () => {
           className={styles.input}
         />
         <button onClick={handleInvite} className={styles.button}>
-          Copy Invite Link
+          Copy Room Code 
         </button>
-        {copyStatus === 'success' && <p className={styles.copySuccess}>Link copied!</p>}
+        {copyStatus === 'success' && <p className={styles.copySuccess}>Room code copied!</p>}
         {copyStatus === 'error' && <p className={styles.copyError}>Failed to copy.</p>}
         
         {/* Game settings section - host view */}
