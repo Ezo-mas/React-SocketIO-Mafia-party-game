@@ -15,16 +15,15 @@
  # misc
  .DS_Store
  Thumbs.db
+ client/.env*
  .vscode/
  .idea/     
  .env
  .env.local
  .env.localA
  .env.development.local
- .env.development
  .env.test.local
  .env.production.local
- .env.production
  
  # Ignore logs
  npm-debug.log*
