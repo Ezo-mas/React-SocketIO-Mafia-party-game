@@ -143,10 +143,6 @@ section{
     width: 100%;
     min-height: auto;
     padding: 50px 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
 }
 
 section .main-container{
@@ -317,6 +313,7 @@ section .topic {
     list-style-type: disc;
     margin-left: 20px;
     color: white;
+    width: 70%;
 }
 
 .join .left img {
@@ -466,10 +463,9 @@ section .button button:hover {
 }
 
 .how-to-play p {
-    text-align: center; /* Pakeistas tekstas i centra */
+    text-align: justify;
     color: white;
     width: 70%;
-    margin: 20px auto; /* Pridėtas margin, kad centruotų p elementą */
 }
 
 .how-to-play h3 {
@@ -522,13 +518,56 @@ section .button button:hover {
     border: 2px solid #b74b4b;
 }
 
-.how-to-play .image {
-    max-width: 300px; /* Sumažintas paveikslėlio plotis */
-    margin: 20px auto; /* Centruoja paveikslėlį */
+/* Specific styling for the player count input */
+#create .right #playerCount {
+    width: 100%; 
+    max-width: 160px; 
+    padding: 12px 16px; 
+    margin-top: 10px;
+    font-size: 16px;
+    font-weight: 400;
+    background: black;
+    color: #fff;
+    border: 2px solid #b74b4b;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.4s ease;
 }
 
-.how-to-play .image img {
-    width: 100%;
-    height: auto;
-    border-radius: 10px;
+/* Hover effect for player count input */
+#create .right #playerCount:hover {
+    border-color: #b74b4b;
+    color: #b74b4b;
+}
+
+
+
+
+/* ================== */
+/* Buttons Styling    */
+/* ================== */
+section .button {
+    margin: 16px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+section .button button {
+    outline: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 25px;
+    font-weight: 400;
+    background: #b74b4b;
+    color: #fff;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s ease;
+}
+
+section .button button:hover {
+    border-color: #b74b4b;
+    background-color: #fff;
+    color: #b74b4b;
 }

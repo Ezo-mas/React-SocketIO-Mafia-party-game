@@ -1,0 +1,125 @@
+/* TitlePage.module.css */
+
+body {
+    background-color: black;
+    margin: 0;
+}
+
+.nav {
+    display: flex;
+    justify-content: center;
+    padding: 20px 0;
+    background-color: #222;
+}
+
+.navButton {
+    background-color: #b74b4b;
+    color: #ddd; /* Pakeista į tamsiai pilką */
+    padding: 10px 20px;
+    margin: 0 10px;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.navButton:hover {
+    background-color: #963a3a;
+}
+
+.main-container {
+    display: flex;
+    justify-content: space-between;
+    background-color: black;
+    align-items: center;
+    padding: 60px;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.image {
+    width: 40%;
+}
+
+.image img {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+}
+
+.content {
+    color: #ddd; /* Pakeista į tamsiai pilką */
+    width: 55%;
+}
+
+.content h1 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+}
+
+.content h1 span {
+    color: #b74b4b;
+    text-shadow: 0 0 10px #b74b4b;
+}
+
+.content .typewriter {
+    font-size: clamp(1rem, 1rem + 5vw, 2.5rem);
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.content .typewriter-text {
+    color: #b74b4b;
+    text-shadow: 0 0 10px #b74b4b;
+    padding-right: 5px;
+    font-weight: bold;
+    font-size: 2.5rem;
+}
+
+.content p {
+    text-align: justify;
+    color: #ddd; /* Pakeista į tamsiai pilką */
+    margin-bottom: 20px;
+}
+
+.input {
+    padding: 10px;
+    font-size: 16px;
+    width: 100%;
+    max-width: 300px;
+    border: 2px solid #b74b4b;
+    border-radius: 5px;
+    margin: 10px 0;
+    background-color: black;
+    color: #ddd; /* Pakeista į tamsiai pilką */
+}
+
+.button {
+    outline: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: 400;
+    background: #b74b4b;
+    color: #ddd; /* Pakeista į tamsiai pilką */
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    margin: 10px 0;
+}
+
+.button:hover {
+    border-color: #b74b4b;
+    background-color: #ddd; /* Pakeista į tamsiai pilką */
+    color: #b74b4b;
+}
+
+.errorMessage {
+    color: #ff4d4d;
+    margin: 10px 0;
+    font-weight: bold;
+    padding: 10px;
+    border: 1px solid #ff4d4d;
+    border-radius: 4px;
+    background-color: rgba(255, 77, 77, 0.1);
+}

@@ -99,6 +99,8 @@ io.on('connection', (socket) => {
    * Room Management
    */
   socket.on('join_room', (roomId, username, isHost) => {
+    console.log(`join_room event received: roomId=${roomId}, username=${username}, isHost=${isHost}`);
+    
     // Check if room exists and is locked
     if (rooms[roomId] && rooms[roomId].locked) {
       socket.emit('room_locked_error', roomId);
