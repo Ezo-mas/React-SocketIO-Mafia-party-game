@@ -196,6 +196,7 @@ const LobbyPage = () => {
       let specialRoles = 0;
       if (gameSettings.detectiveEnabled) specialRoles++;
       if (gameSettings.doctorEnabled) specialRoles++;
+      if (gameSettings.jesterEnabled) specialRoles++;
       
       const civCount = Math.max(0, players.length - mafiaCount - specialRoles);
       
@@ -404,7 +405,20 @@ const LobbyPage = () => {
                 Doctor Role
               </label>
             </div>
-            
+
+            {/* Jester role toggle */}
+            <div className={styles.settingRow}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={gameSettings.jesterEnabled}
+                  onChange={(e) => handleSettingChange('jesterEnabled', e.target.checked)}
+                  disabled={!isHost || roomLocked}
+                  className={styles.settingCheckbox}
+                />
+                Jester Role
+              </label>
+            </div>
             {/* Role distribution */}
             <div className={styles.roleDistribution}>
               <h4>Role Distribution (Estimated):</h4>
@@ -412,6 +426,7 @@ const LobbyPage = () => {
                 <li>Mafia: {Math.floor(players.length * gameSettings.mafiaPercentage / 100)} players</li>
                 {gameSettings.detectiveEnabled && <li>Detective: 1 player</li>}
                 {gameSettings.doctorEnabled && <li>Doctor: 1 player</li>}
+                {gameSettings.jesterEnabled && <li>Jester: 1 player</li>}
                 <li>Civilians: {gameSettings.civilianCount} players</li>
               </ul>
             </div>
@@ -428,6 +443,7 @@ const LobbyPage = () => {
               <li>Mafia: {Math.floor(players.length * gameSettings.mafiaPercentage / 100)} players</li>
               {gameSettings.detectiveEnabled && <li>Detective Role: Enabled</li>}
               {gameSettings.doctorEnabled && <li>Doctor Role: Enabled</li>}
+              {gameSettings.jesterEnabled && <li>Jester Role: Enabled</li>}
               <li>Civilians: {gameSettings.civilianCount} players</li>
             </ul>
           </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import socket from '../services/socket';
 import styles from './GamePage.module.css';
+import roleData from '../data/roleData';
 
 const GamePage = () => {
   const { roomId } = useParams();
@@ -15,10 +16,68 @@ const GamePage = () => {
     isAlive: true,
   });
 
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [showRoleInfo, setShowRoleInfo] = useState(false);
   const [countdown, setCountdown] = useState(0); // Countdown timer state
   const [showRoles, setShowRoles] = useState(false); // State to show role cards
   const [isFadingOut, setIsFadingOut] = useState(false); // State to trigger fade-out animation
   const [showGameScreen, setShowGameScreen] = useState(false); // State to show the main game screen
+
+  // Function to handle role click
+  const handleRoleClick = (role) => {
+    setSelectedRole(role);
+    setShowRoleInfo(true);
+  };
+
+  // Function to close role info
+  const handleCloseRoleInfo = () => {
+    setShowRoleInfo(false);
+  };
+
+  // Role information tooltip/modal
+  const RoleInfoModal = ({ role, onClose }) => {
+    if (!role) return null;
+    
+    return (
+      <div className={styles.roleInfoModal}>
+        <div className={styles.roleInfoContent}>
+          <h3>{role.name}</h3>
+          <p className={styles.alignment}>{role.alignment}</p>
+          <p>{role.description}</p>
+          <button onClick={onClose} className={styles.closeButton}>Close</button>
+        </div>
+      </div>
+    );
+  };
+
+   // Roles section component
+   const RolesSection = () => {
+    return (
+      <div className={styles.rolesSection}>
+        <h3>Game Roles</h3>
+        <div className={styles.rolesGrid}>
+          {roleData.map((role, index) => (
+            <div 
+              key={index} 
+              className={styles.roleItem}
+              onClick={() => handleRoleClick(role)}
+            >
+              <span className={`${styles.roleBadge} ${styles[role.alignment]}`}>
+                {role.name}
+              </span>
+            </div>
+          ))}
+        </div>
+        {showRoleInfo && (
+          <RoleInfoModal 
+            role={selectedRole}
+            onClose={handleCloseRoleInfo}
+          />
+        )}
+      </div>
+    );
+  };
+
 
   useEffect(() => {
     // Join game room
@@ -33,7 +92,7 @@ const GamePage = () => {
     const handleCountdownUpdate = (remainingTime) => {
       console.log("Countdown update:", remainingTime);
       setCountdown(remainingTime);
-    };
+    };    
 
     const handleRoleAssigned = ({ role }) => {
       console.log("Role assigned:", role);
@@ -43,15 +102,15 @@ const GamePage = () => {
       }));
       setShowRoles(true);
 
-      // Hide the role cards after 7 seconds and show the game screen
-      setTimeout(() => {
-        setIsFadingOut(true); // Start fade-out animation
+      // Hide the role cards after 7 seconds and show the game screen    
         setTimeout(() => {
-          setShowRoles(false); // Hide role cards
-          setIsFadingOut(false); // Reset fade-out state
-          setShowGameScreen(true); // Show the main game screen
-        }, 1000); // Match the duration of the fade-out animation
-      }, 2000);
+          setIsFadingOut(true); // Start fade-out animation
+          setTimeout(() => {
+            setShowRoles(false); // Hide role cards
+            setIsFadingOut(false); // Reset fade-out state
+            setShowGameScreen(true); // Show the main game screen
+          }, 1000); // Match the duration of the fade-out animation
+        }, 2000);
     };
 
     const handleGameStarted = (newGameState) => {
@@ -135,6 +194,7 @@ const GamePage = () => {
           <h3>Game Actions</h3>
           <p>Game implementation coming soon...</p>
         </div>
+        <RolesSection />
       </div>
     );
   }

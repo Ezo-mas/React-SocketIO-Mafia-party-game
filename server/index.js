@@ -144,17 +144,19 @@ function assignRolesToPlayers(roomId) {
   let mafiaCount = Math.floor((room.settings.mafiaPercentage / 100) * playerCount);
   let detectiveCount = room.settings.detectiveEnabled ? 1 : 0;
   let doctorCount = room.settings.doctorEnabled ? 1 : 0;
+  let jesterCount = room.settings.jesterEnabled ? 1 : 0;
 
   // Ensure the total number of roles does not exceed the number of players
-  if (mafiaCount + detectiveCount + doctorCount > playerCount) {
+  if (mafiaCount + detectiveCount + doctorCount + jesterCount > playerCount) {
     // Adjust roles dynamically if there are too few players
     if (mafiaCount > 0) mafiaCount--;
     if (detectiveCount > 0 && mafiaCount + detectiveCount + doctorCount > playerCount) detectiveCount--;
     if (doctorCount > 0 && mafiaCount + detectiveCount + doctorCount > playerCount) doctorCount--;
+    if (jesterCount > 0 && mafiaCount + detectiveCount + doctorCount + jesterCount > playerCount) jesterCount--;
   }
 
   // Calculate the remaining civilians
-  const civilianCount = playerCount - mafiaCount - detectiveCount - doctorCount;
+  const civilianCount = playerCount - mafiaCount - detectiveCount - doctorCount - jesterCount;
 
   // Create a list of roles
   const roles = [
@@ -162,6 +164,7 @@ function assignRolesToPlayers(roomId) {
     ...Array(detectiveCount).fill('Detective'),
     ...Array(doctorCount).fill('Doctor'),
     ...Array(civilianCount).fill('Civilian'),
+    ...Array(jesterCount).fill('Jester'),
   ];
 
   // Shuffle the roles
@@ -441,14 +444,14 @@ io.on('connection', (socket) => {
       return;
     }
   
-    /*
+    
     // Check if the number of players is within the allowed range
     const playerCount = room.players.length;
     if (playerCount < 4 || playerCount > 12) {
       socket.emit('game_start_error', 'The number of players must be between 4 and 12 to start the game.');
       return;
     }
-  */
+  
 
     // Store settings for the game
     rooms[roomId].settings = gameSettings || rooms[roomId].settings;

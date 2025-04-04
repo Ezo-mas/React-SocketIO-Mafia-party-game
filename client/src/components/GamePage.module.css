@@ -187,3 +187,114 @@
       opacity: 1;
     }
   }
+
+  /* Role section styling */
+
+  .rolesSection {
+    margin-top: 2rem;
+    padding: 1rem;
+    border-top: 1px solid #444; 
+    color: #ddd; 
+    text-align: center; 
+  }
+
+  .rolesSection h3 {
+    color: #b74b4b; 
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .rolesGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    justify-content: center;
+    margin-top: 1rem;
+  }
+
+  .roleItem {
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .roleItem:hover {
+    transform: translateY(-3px);
+  }
+
+  .roleBadge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+ 
+  .town {
+    background-color: #199e50; 
+    color: white;
+  }
+
+  .neutral {
+    background-color: #f39c12; 
+    color: white; 
+    }
+
+  .mafia {
+    background-color: #e74c3c; 
+    color: white; 
+  }
+
+  .roleInfoModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+
+  .roleInfoContent {
+    background-color: #222; 
+    color: #ddd; 
+    border-radius: 8px;
+    padding: 1.5rem;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    border: 1px solid #444; 
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  }
+
+  .roleInfoContent h3 {
+    color: #b74b4b; 
+    margin-top: 0;
+    font-size: 1.5rem;
+  }
+
+  .alignment {
+    font-style: italic;
+    color: #aaa; 
+    margin-bottom: 1rem;
+    text-transform: capitalize;
+  }
+
+  .closeButton {
+    background-color: #b74b4b; 
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    margin-top: 1rem;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  .closeButton:hover {
+    background-color: #9e3e3e; 
+  }
