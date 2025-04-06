@@ -74,6 +74,61 @@ const LandingPage = () => {
               Only the smartest and most ruthless will survive and become the ultimate crime boss. 
               Are you ready to join the Mafia?
             </p>
+
+            <h1> <span>Rules</span> of the game</h1>
+            <p>
+            <h2><b>Roles & Their Abilities:</b></h2>
+            <b>Town Side</b>
+            <br />
+            <ol>
+                <li>Villager (Townsperson) - A regular player with no special abilities. Their role is to discuss, vote, and identify Mafia members.</li>
+                <li>Doctor - Can choose one player each night to protect from elimination. Cannot save the same person two nights in a row.</li>
+                <li>Detective (Sheriff) - Can investigate one player per night to learn if they are Mafia or not.</li>
+                </ol>
+            <b>Mafia Side</b>
+            <br />
+            <ol>
+                <li>Mafia Member - Works with the other Mafia members to eliminate one Town player each night.</li>
+            </ol>
+            </p>
+            <p>
+            <br />
+              <h2><b> Game Phases:</b></h2>
+              <b> Night Phase</b>
+              <br />
+              <ul>
+                <li>The Mafia secretly selects one player to eliminate.</li>
+                <li>Doctor picks someone to save.</li>
+                <li>The Detective investigates one player to determine their alignment.</li>
+                <li>All actions occur simultaneously and are processed by the system.</li>
+              </ul>
+              <b>Day Phase</b>
+              <br />
+              <ul>
+                <li>It is revealed whether a player was eliminated during the night.</li>
+                <li>Players discuss, debate, and accuse each other.</li>
+                <li>A vote is held, and the player with the most votes is eliminated.</li>
+                <li>Tie? No one goes. But the paranoia grows.</li>
+              </ul>
+              <b> Repeat Until Victory</b>
+              <ul>
+                <li>The Town wins if all Mafia members are eliminated.</li>
+                <li>The Mafia wins if they equal or outnumber the Town.</li>
+              </ul>
+              <br />
+              <br />
+              <h2><b> Voting Rules:</b></h2>
+              <ul>
+                <li>Voting takes place during the Day Phase.</li>
+                <li>Call someone out. Defend yourself. Play the room.</li>
+                <li>The player with the most votes is eliminated from the game.</li>
+                <li>If a tie occurs, the round proceeds without elimination.</li>
+              </ul>
+              <br /> 
+              <br />
+              <h2><b>Most important rule:</b></h2>
+              No Role Reveals After Death – Dead men tell no tales. If you’re eliminated, you’re silent.
+            </p>
           </div>
         </div>
       </section>

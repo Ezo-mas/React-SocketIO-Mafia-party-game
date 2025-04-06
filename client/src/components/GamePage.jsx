@@ -43,6 +43,9 @@ const GamePage = () => {
         <div className={styles.roleInfoContent}>
           <h3>{role.name}</h3>
           <p className={styles.alignment}>{role.alignment}</p>
+          <div>
+           <img className={styles.roleImage} src={'../' + role.name + '.png'} alt={role.name} />
+          </div>
           <p>{role.description}</p>
           <button onClick={onClose} className={styles.closeButton}>Close</button>
         </div>
@@ -148,6 +151,9 @@ const GamePage = () => {
         <div className={styles.roleCard}>
           <h2>Your Role</h2>
           <p className={styles.role}>{gameState.role}</p>
+          <div>
+           <img className={styles.roleImage} src={'../' + gameState.role + '.png'} alt={gameState.role} />
+          </div>
         </div>
       </div>
     );

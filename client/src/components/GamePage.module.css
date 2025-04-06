@@ -298,3 +298,8 @@
   .closeButton:hover {
     background-color: #9e3e3e; 
   }
+
+  .roleImage {
+    width: 60%;
+    height: auto;
+  }
