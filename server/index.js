@@ -553,6 +553,13 @@ io.on('connection', (socket) => {
       }
     }
   });
+
+  /**
+   * Handle chat messages
+   */
+  socket.on('chat_message', (data) => {
+    io.to(data.roomId).emit('receive_message', data);
+  });
 });
 
 // ==============================

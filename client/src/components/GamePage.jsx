@@ -22,6 +22,15 @@ const GamePage = () => {
   const [showRoles, setShowRoles] = useState(false); // State to show role cards
   const [isFadingOut, setIsFadingOut] = useState(false); // State to trigger fade-out animation
   const [showGameScreen, setShowGameScreen] = useState(false); // State to show the main game screen
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+
+  const sendMessage = () => {
+    if (newMessage.trim() !== '') {
+      socket.emit('chat_message', { roomId, username, message: newMessage });
+      setNewMessage('');
+    }
+  };
 
   // Function to handle role click
   const handleRoleClick = (role) => {
@@ -52,6 +61,16 @@ const GamePage = () => {
       </div>
     );
   };
+
+  useEffect(() => {
+    socket.on('receive_message', (data) => {
+      setMessages((prevMessages) => [...prevMessages, data]);
+    });
+
+    return () => {
+      socket.off('receive_message');
+    };
+  }, [socket]);
 
    // Roles section component
    const RolesSection = () => {
@@ -201,6 +220,25 @@ const GamePage = () => {
           <p>Game implementation coming soon...</p>
         </div>
         <RolesSection />
+        <div className={styles['chat-box']}>
+          <div className={styles['chat-messages-container']}>
+            {messages.map((msg, index) => (
+              <div key={index} className={styles['chat-message']}>
+                {msg.username}: {msg.message}
+              </div>
+            ))}
+          </div>
+          <div className={styles['chat-input']}>
+            <input
+              className={styles['chat-input-text']}
+              type="text"
+              placeholder="Type your message..."
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+            />
+            <button type="submit" onClick={sendMessage}>Send</button>
+          </div>
+        </div>
       </div>
     );
   }
