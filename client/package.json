@@ -11,6 +11,7 @@
     "react": "^19.0.0",
     "react-countdown": "^2.3.6",
     "react-dom": "^19.0.0",
+    "react-howler": "^5.2.0",
     "react-router-dom": "^7.3.0",
     "react-scripts": "^5.0.1",
     "socket.io-client": "^4.8.1",

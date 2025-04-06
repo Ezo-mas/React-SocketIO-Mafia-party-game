@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
+import ReactHowler from 'react-howler'
 import socket from '../services/socket';
 import styles from './GamePage.module.css';
 import roleData from '../data/roleData';
@@ -158,6 +159,11 @@ const GamePage = () => {
     return (
       <div className={styles.countdownContainer}>
         <h1>Game Starting In...</h1>
+        <ReactHowler
+            src='../bell.mp3'
+            playing={true}
+            loop={true}
+            />
         <h2 className={countdown <= 3 ? styles.redCountdown : ''}>{countdown} seconds</h2>
       </div>
     );
