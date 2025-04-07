@@ -11,17 +11,77 @@ const GamePage = () => {
   const { username } = location.state || { username: 'Guest' };
   const [gameState, setGameState] = useState({
     phase: 'night', // 'day' or 'night'
-    phaseTime: 0, // time remaining in current phase
+    phaseTime: 30, // time remaining in current phase
     players: [], // Array of players (without roles)
     role: 'waiting', // Player's assigned role
     isAlive: true,
   });
 
+  // State for managing the fullscreen phase transition
+  const [isPhaseTransitioning, setIsPhaseTransitioning] = useState(false);
+  const [isFadingOutTransition, setIsFadingOutTransition] = useState(false); // State for fade-out
+  const [transitionPhase, setTransitionPhase] = useState(null); // Stores the upcoming phase ('day' or 'night') during transition
+
+  useEffect(() => {
+    if (gameState.phaseTime <= 0 || isPhaseTransitioning) {
+        if (isPhaseTransitioning && gameState.phaseTime > 0) {
+             return;
+        }
+        if (!isPhaseTransitioning) {
+            setIsFadingOutTransition(false);
+            setTransitionPhase(null);
+        }
+        return;
+    }
+
+    let intervalId = setInterval(() => {
+      setGameState((prevGameState) => {
+        if (isPhaseTransitioning) return prevGameState;
+
+        const newTime = prevGameState.phaseTime - 1;
+
+        if (newTime <= 0) {
+          const nextPhase = prevGameState.phase === 'night' ? 'day' : 'night';
+          setTransitionPhase(nextPhase); // Store the phase for the transition screen
+          setIsFadingOutTransition(false); // Ensure fade-out is reset
+          setIsPhaseTransitioning(true); // Show the transition screen (fade-in)
+
+          const fadeOutTimer = setTimeout(() => {
+            setIsFadingOutTransition(true);
+
+            const endTransitionTimer = setTimeout(() => {
+              setGameState(currentState => ({
+                ...currentState,
+                phase: nextPhase,
+                phaseTime: 30,
+              }));
+              setIsPhaseTransitioning(false); 
+              setTransitionPhase(null);
+            }, 1000);
+
+
+          }, 7000);
+
+          return { ...prevGameState, phaseTime: 0 };
+        } else {
+
+          return { ...prevGameState, phaseTime: newTime };
+        }
+      });
+    }, 1000);
+
+
+    return () => {
+      clearInterval(intervalId);
+    };
+
+  }, [gameState.phaseTime, isPhaseTransitioning]);
+
   const [selectedRole, setSelectedRole] = useState(null);
   const [showRoleInfo, setShowRoleInfo] = useState(false);
   const [countdown, setCountdown] = useState(0); // Countdown timer state
   const [showRoles, setShowRoles] = useState(false); // State to show role cards
-  const [isFadingOut, setIsFadingOut] = useState(false); // State to trigger fade-out animation
+  const [isFadingOut, setIsFadingOut] = useState(false); // State to trigger fade-out animation FOR ROLE CARDS
   const [showGameScreen, setShowGameScreen] = useState(false); // State to show the main game screen
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -47,7 +107,7 @@ const GamePage = () => {
   // Role information tooltip/modal
   const RoleInfoModal = ({ role, onClose }) => {
     if (!role) return null;
-    
+
     return (
       <div className={styles.roleInfoModal}>
         <div className={styles.roleInfoContent}>
@@ -80,8 +140,8 @@ const GamePage = () => {
         <h3>Game Roles</h3>
         <div className={styles.rolesGrid}>
           {roleData.map((role, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className={styles.roleItem}
               onClick={() => handleRoleClick(role)}
             >
@@ -92,7 +152,7 @@ const GamePage = () => {
           ))}
         </div>
         {showRoleInfo && (
-          <RoleInfoModal 
+          <RoleInfoModal
             role={selectedRole}
             onClose={handleCloseRoleInfo}
           />
@@ -111,11 +171,11 @@ const GamePage = () => {
       console.log("Countdown started with duration:", countdownDuration);
       setCountdown(countdownDuration);
     };
-  
+
     const handleCountdownUpdate = (remainingTime) => {
       console.log("Countdown update:", remainingTime);
       setCountdown(remainingTime);
-    };    
+    };
 
     const handleRoleAssigned = ({ role }) => {
       console.log("Role assigned:", role);
@@ -125,19 +185,23 @@ const GamePage = () => {
       }));
       setShowRoles(true);
 
-      // Hide the role cards after 7 seconds and show the game screen    
+      // Hide the role cards after 7 seconds and show the game screen
         setTimeout(() => {
-          setIsFadingOut(true); // Start fade-out animation
+          setIsFadingOut(true); // Start fade-out animation FOR ROLE CARDS
           setTimeout(() => {
             setShowRoles(false); // Hide role cards
-            setIsFadingOut(false); // Reset fade-out state
+            setIsFadingOut(false); // Reset fade-out state FOR ROLE CARDS
             setShowGameScreen(true); // Show the main game screen
           }, 1000); // Match the duration of the fade-out animation
-        }, 2000);
+        }, 2000); // Role card display duration
     };
 
     const handleGameStarted = (newGameState) => {
       console.log("Game started with state:", newGameState);
+      // Ensure phase transition state is reset if game starts fresh
+      setIsPhaseTransitioning(false);
+      setIsFadingOutTransition(false);
+      setTransitionPhase(null);
       setGameState(newGameState);
     };
 
@@ -154,8 +218,30 @@ const GamePage = () => {
     };
   }, [roomId, username]);
 
+  // ---- RENDER LOGIC ----
+
+  // 1. Render fullscreen transition if active
+  if (isPhaseTransitioning) {
+    // Apply fade-in initially, then fade-out when isFadingOutTransition is true
+    const transitionContainerClass = `
+      ${styles.animationContainer}
+      ${styles.fullscreenTransition}
+      ${transitionPhase === 'day' ? styles.day : styles.night}
+      ${isFadingOutTransition ? styles.fadingOutTransition : styles.fadeInTransition}
+    `;
+    return (
+      <div className={transitionContainerClass.trim()}>
+        <div className={styles.spinner}>
+          <div className={styles.sun}></div>
+          <div className={styles.moon}></div>
+        </div>
+        <div className={styles.stars}></div>
+      </div>
+    );
+  }
+
+  // 2. Render countdown if active
   if (countdown > 0) {
-    // Render the countdown timer
     return (
       <div className={styles.countdownContainer}>
         <h1>Game Starting In...</h1>
@@ -169,8 +255,8 @@ const GamePage = () => {
     );
   }
 
+  // 3. Render role reveal if active (using the original isFadingOut state for role cards)
   if (showRoles) {
-    // Render role card for the current player
     return (
       <div className={`${styles.roleCardsContainer} ${isFadingOut ? styles.fadingOut : ''}`}>
         <div className={styles.roleCard}>
@@ -184,13 +270,16 @@ const GamePage = () => {
     );
   }
 
+  // 4. Render main game screen if active
   if (showGameScreen) {
-    // Render the main game screen
     return (
+      // The main container for the game view
       <div className={styles.gameContainer}>
-        <div className={styles.header}>
-          <h1>Mafia Game</h1>
-          <div className={styles.phaseInfo}>
+
+        <div>
+          <div className={styles.header}>
+            <h1>Mafia Game</h1>
+            <div className={styles.phaseInfo}>
             <h2>{gameState.phase === 'day' ? 'Day Phase' : 'Night Phase'}</h2>
             <div className={styles.timer}>
               Time remaining: {gameState.phaseTime} seconds
@@ -242,14 +331,16 @@ const GamePage = () => {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
             />
-            <button type="submit" onClick={sendMessage}>Send</button>
+              <button type="submit" onClick={sendMessage}>Send</button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  return null; // Render nothing until the countdown, role cards, or game screen is ready
+  // 5. Render nothing by default if none of the above conditions are met
+  return null;
 };
 
 export default GamePage;

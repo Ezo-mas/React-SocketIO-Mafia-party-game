@@ -263,6 +263,293 @@
     z-index: 1000;
   }
 
+/*
+  Dienos ir nakties animacijos
+  - Sklandus perėjimas tarp dienos ir nakties naudojant gradientus
+  - Saulės, mėnulio ir žvaigždžių animacijos
+*/
+
+/* Pagrindinis konteineris animacijai - pritaikytas modulio stiliui */
+.animationContainer {
+  height: 100vh; /* Užima visą ekrano aukštį */
+  width: 100vw; /* Užima visą ekrano plotį */
+  position: fixed; /* Fiksuota pozicija, kad būtų virš visko */
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  z-index: -1; /* Padeda fonui būti už turinio, kai NĖRA pereinamojo laikotarpio */
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Fade-out animation */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Base style for transition container */
+.fullscreenTransition {
+  z-index: 9999; /* Very high z-index to ensure it's above everything */
+  opacity: 0; /* Start transparent, rely on animation */
+  /* Reverted: Covers full screen */
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Class for fade-in phase */
+.fadeInTransition {
+  animation: fadeIn 1s ease-in forwards; /* Use forwards to keep opacity: 1 */
+}
+
+/* Class for fade-out phase */
+.fadingOutTransition {
+  animation: fadeOut 1s ease-out forwards; /* Use forwards to keep opacity: 0 */
+}
+
+
+/* Fono gradientai – perkelti į apačią */
+.animationContainer::before,
+.animationContainer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transition: opacity 12s ease-in-out;
+  z-index: -2; /* Užtikrina, kad gradientai yra už kitų animacijos elementų */
+}
+
+/* Dienos gradientas */
+.animationContainer.day::before {
+  background: linear-gradient(#3f006c, #750050, #b10042, #da4837, #f7bb38);
+  opacity: 1;
+}
+.animationContainer.night::before {
+  opacity: 0;
+}
+
+
+/* Nakties gradientas */
+.animationContainer.night::after {
+  background: linear-gradient(to top, #080226, #160b4d, #111365, #0a286b, #0e4a8b); /* Even darker blue shades */
+  opacity: 1;
+}
+.animationContainer.day::after {
+  opacity: 0;
+}
+
+
+/* Mėnulis ir žvaigždės – aukščiau */
+.moon, .stars {
+  position: absolute;
+  z-index: 2; /* Užtikrina, kad jie yra virš fono */
+}
+
+/* Sukuriamas besisukantis apskritimas */
+.spinner {
+  height: 28.12em; /* Aukštis */
+  width: 28.12em; /* Plotis */
+  border-radius: 50%; /* Apskritimo forma */
+  position: absolute; /* Absoliuti pozicija */
+  top: 50%; /* Centruojama vertikaliai */
+  left: 50%; /* Centruojama horizontaliai */
+  transform: translate(-50%, -50%); /* Tikslus centravimas */
+  animation: spin 12s infinite linear; /* Pakeista į linear, kad būtų tolygesnis */
+}
+
+/* Apibrėžiama sukimosi animacija */
+@keyframes spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Saulės objektas */
+.sun {
+  background-color: #f7f7de; /* Saulės spalva */
+  height: 3.75em; /* Aukštis */
+  width: 3.75em; /* Plotis */
+  border-radius: 50%; /* Apskritimo forma */
+  position: absolute; /* Absoliuti pozicija */
+  /* Pozicija bus nustatyta sukimosi metu */
+  top: 50%;
+  left: 50%;
+  margin-top: -1.875em; /* Pusė aukščio */
+  margin-left: 12.185em; /* Atstumas nuo centro (spinnerio spindulys - saulės spindulys) */
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.animationContainer.day .sun {
+  opacity: 1;
+}
+
+/* Sukuriami švytėjimo sluoksniai aplink saulę */
+.sun:before,
+.sun:after {
+  position: absolute; /* Absoliuti pozicija */
+  content: ""; /* Turinys tuščias */
+  background-color: rgba(255, 255, 255, 0.1); /* Pusiau permatomas baltas fonas */
+  border-radius: 50%; /* Apskritimo forma */
+  z-index: -1;
+}
+
+/* Vidinis švytėjimo sluoksnis */
+.sun:before {
+  height: 7.5em; /* Aukštis */
+  width: 7.5em; /* Plotis */
+  right: -1.87em; /* Atstumas nuo dešinės */
+  bottom: -1.87em; /* Atstumas nuo apačios */
+}
+
+/* Išorinis švytėjimo sluoksnis */
+.sun:after {
+  height: 12.5em; /* Aukštis */
+  width: 12.5em; /* Plotis */
+  right: -4.37em; /* Atstumas nuo dešinės */
+  bottom: -4.37em; /* Atstumas nuo apačios */
+}
+
+
+/* Mėnulio objektas */
+.moon {
+  height: 3.75em; /* Aukštis */
+  width: 3.75em; /* Plotis */
+  box-shadow: 1.25em -1.25em 0 0 #f7f7de; /* Šviesos efektas (šešėlis) */
+  border-radius: 50%; /* Apskritimo forma */
+  position: absolute; /* Absoliuti pozicija */
+  /* Pozicija bus nustatyta sukimosi metu */
+  top: 50%;
+  left: 50%;
+  margin-top: -1.875em; /* Pusė aukščio */
+  margin-left: -16.06em; /* Atstumas nuo centro (spinnerio spindulys + mėnulio spindulys + šešėlis) */
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.animationContainer.night .moon {
+  opacity: 1;
+}
+
+/* Sukuriami papildomi švytėjimo sluoksniai */
+.moon:before,
+.moon:after {
+  position: absolute; /* Absoliuti pozicija */
+  content: ""; /* Turinys tuščias */
+  background-color: rgba(255, 255, 255, 0.1); /* Pusiau permatomas baltas fonas */
+  border-radius: 50%; /* Apskritimo forma */
+  z-index: -1;
+}
+
+/* Vidinis mėnulio švytėjimo sluoksnis */
+.moon:before {
+  height: 6.25em; /* Aukštis */
+  width: 6.25em; /* Plotis */
+  right: -2.5em; /* Atstumas nuo dešinės */
+  bottom: 0; /* Fiksuota apačioje */
+}
+
+/* Išorinis mėnulio švytėjimo sluoksnis */
+.moon:after {
+  height: 11.8em; /* Aukštis */
+  width: 11.8em; /* Plotis */
+  left: -2.8em; /* Atstumas nuo kairės */
+  bottom: -2.8em; /* Atstumas nuo apačios */
+}
+
+/* Žvaigždžių kūrimas */
+.stars {
+  height: 0.15em; /* Žvaigždžių dydis */
+  width: 0.15em; /* Žvaigždžių dydis */
+  background-color: #ffffff; /* Žvaigždžių spalva (balta) */
+  position: absolute; /* Absoliuti pozicija */
+  top: 50%; /* Centruojama */
+  left: 50%;
+  transform: translate(-50%, -50%); /* Tikslus centravimas */
+  border-radius: 50%; /* Apskritimo forma */
+  opacity: 0;
+  transition: opacity 1s ease-in-out 1s; /* Vėluojantis pasirodymas */
+
+  /* Sukuriama daug žvaigždžių skirtingose vietose */
+  box-shadow:
+  10em 5em #ffffff,
+  15em 6em #ffffff,
+  29em 7em #ffffff,
+  35em 5em #ffffff,
+  40em 3em #ffffff,
+  22em 4em #ffffff,
+  25em 3em #ffffff,
+  18em 8em #ffffff,
+  20em 12em #ffffff,
+  12em 9em #ffffff,
+  5em 10em #ffffff,
+  8em 15em #ffffff,
+  15em 20em #ffffff,
+  20em 25em #ffffff,
+  25em 30em #ffffff,
+  30em 28em #ffffff,
+  40em 22em #ffffff,
+  35em 18em #ffffff,
+  25em 25em #ffffff,
+  30em 20em #ffffff,
+  45em 25em #ffffff,
+  48em 18em #ffffff,
+  50em 15em #ffffff,
+  55em 12em #ffffff,
+  60em 20em #ffffff,
+  65em 15em #ffffff,
+  70em 10em #ffffff,
+  75em 18em #ffffff,
+  80em 25em #ffffff,
+  85em 20em #ffffff,
+  90em 5em #ffffff,
+  95em 12em #ffffff,
+  100em 15em #ffffff,
+  105em 10em #ffffff,
+  110em 20em #ffffff,
+  115em 25em #ffffff,
+  120em 30em #ffffff;
+
+  animation: twinkle 5s infinite ease-in-out; /* Mirgėjimo animacija */
+}
+
+.animationContainer.night .stars {
+  opacity: 0.7; /* Žvaigždės matomos tik naktį */
+}
+
+/* Žvaigždžių mirgėjimo efektas */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Glow efektai pašalinti, nes jie nebuvo tiesiogiai susiję su dienos/nakties ciklu */
+
+/* Atsakas į ekrano dydžio pasikeitimą (medijų užklausa) */
+@media screen and (min-width: 600px) {
+  /* Jei reikia specifinių pakeitimų didesniems ekranams */
+  .spinner {
+    font-size: 1.2em; /* Šiek tiek padidinam animaciją */
+  }
+}
+
   .roleInfoContent {
     background-color: #222; 
     color: #ddd; 
@@ -346,4 +633,19 @@
     border-radius: 5px;
     padding: 8px 15px;
     cursor: pointer;
+  }
+
+  .blackScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
   }
