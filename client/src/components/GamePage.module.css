@@ -6,15 +6,35 @@
     min-height: 100vh;
     padding: 20px;
   }
+
+  .centeredPhaseInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 0;
+  }
+
+  .centeredPhaseInfo h2 {
+    margin-bottom: 5px;
+    font-size: 24px;
+    text-align: center;
+  }
   
   .header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #444;
+    justify-content: center;
+    width: 100%;
     margin-bottom: 20px;
   }
+
+  .timer {
+    font-size: 32px;
+    font-weight: bold;
+    text-align: center;
+  }
+  
   
   .header h1 {
     color: #b74b4b;
@@ -30,10 +50,6 @@
     color: #ddd;
   }
   
-  .timer {
-    font-size: 1.2rem;
-    font-weight: bold;
-  }
   
   .roleInfo {
     background-color: #222;
@@ -608,8 +624,10 @@
 
   .chat-box {
     width: 80%;
-    margin: 0 auto;
+    margin: 20px auto 0;
     text-align: left;
+    border-radius: 5px;
+    padding: 15px;
   }
 
   .chat-input {

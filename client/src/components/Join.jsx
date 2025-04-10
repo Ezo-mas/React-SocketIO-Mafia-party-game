@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import socket from '../services/socket';
+import socket, { leaveGame, GameStorage } from '../services/socket';
 import { LobbyContext } from '../context/LobbyContext';
 import styles from './TitlePage.module.css';
 
@@ -48,7 +48,15 @@ const Join = () => {
             alert('Please enter the room ID.');
             return;
         }
+
+        const oldRoomId = GameStorage.getActiveRoom();
+        if (oldRoomId && oldRoomId !== roomId) {
+            console.log(`Leaving previous room ${oldRoomId} before joining ${roomId}`);
+            leaveGame(oldRoomId);
+        }
+        socket.emit('leave_any_previous_games');
         
+        GameStorage.setActiveRoom(roomId);
         addPlayer(name);
         socket.emit('join_room', roomId, name, false);
     };

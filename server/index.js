@@ -11,6 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.static(path.join(__dirname, "../client/build")));
 
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' }
@@ -32,6 +33,8 @@ const roomHosts = new Map();
 const roomTimers = {};
 const roomKickedPlayers = {};
 const lastBroadcastTime = {};
+const emptyGameRooms = {};
+const timeouts = new Map();
 
 // ==============================
 // Helper Functions
@@ -65,34 +68,225 @@ function broadcastTimer(roomId) {
   }
 }
 
+function setManagedTimeout(id, callback, delay) {
+  clearManagedTimeout(id); // Clear any existing timeout with this ID
+  
+  timeouts.set(id, setTimeout(() => {
+    callback();
+    timeouts.delete(id); // Auto-cleanup when complete
+  }, delay));
+  
+  return id;
+}
+
+function clearManagedTimeout(id) {
+  if (timeouts.has(id)) {
+    clearTimeout(timeouts.get(id));
+    timeouts.delete(id);
+    return true;
+  }
+  return false;
+}
+
+function startPhaseTimer(roomId) {
+  const room = rooms[roomId];
+  if (!room) return;
+  
+  // Clear any existing timer
+  clearManagedTimeout(`phase_${roomId}`);
+  
+  // Get the current phase and duration
+  const currentPhase = room.gameState?.phase || 'night';
+  const phaseDuration = currentPhase === 'day' ? 
+    room.settings.dayDuration : 
+    room.settings.nightDuration;
+    
+  let remainingTime = phaseDuration;
+  
+  // Send initial phase time to all clients
+  io.to(roomId).emit('phase_timer_update', {
+    phase: currentPhase,
+    remainingTime: remainingTime
+  });
+  
+  // Set up the countdown interval using our managed interval system
+  const intervalId = setInterval(() => {
+    remainingTime--;
+    
+    // Broadcast remaining time to all clients
+    io.to(roomId).emit('phase_timer_update', {
+      phase: currentPhase,
+      remainingTime: remainingTime
+    });
+    
+    // When timer reaches zero, switch to the next phase
+    if (remainingTime <= 0) {
+      clearInterval(intervalId);
+      
+      // Toggle phase
+      const nextPhase = currentPhase === 'day' ? 'night' : 'day';
+      
+      // Update the game state
+      room.gameState = {
+        ...room.gameState,
+        phase: nextPhase,
+        transitioning: true
+      };
+      
+      // Send phase transition event to clients
+      io.to(roomId).emit('phase_change', {
+        phase: nextPhase
+      });
+      
+      // Start the next phase timer after a delay using managed timeout
+      setManagedTimeout(`phase_transition_${roomId}`, () => {
+        startPhaseTimer(roomId);
+      }, 5000);
+    }
+  }, 1000);
+  
+  // Store the interval ID for cleanup
+  room.phaseTimer = intervalId;
+}
+
+
+function updatePlayerStatus(roomId, socketId, username, status, data = {}) {
+  const room = rooms[roomId];
+  if (!room) return false;
+  
+  // Find the player
+  let playerIndex = -1;
+  
+  // First try to find by socketId if provided
+  if (socketId) {
+    playerIndex = room.players.findIndex(p => p.id === socketId);
+  }
+  
+  // If not found and username provided, try to find by username
+  if (playerIndex === -1 && username) {
+    playerIndex = room.players.findIndex(p => p.username === username);
+  }
+  
+  // Player not found
+  if (playerIndex === -1) return false;
+  
+  const player = room.players[playerIndex];
+  const now = Date.now();
+  
+  switch (status) {
+    case 'connected':
+      // Update socket ID if provided and different
+      if (socketId && player.id !== socketId) {
+        player.id = socketId;
+      }
+      
+      // Clear any disconnected status
+      if (player.disconnected) {
+        delete player.disconnected;
+        delete player.disconnectTime;
+        io.to(roomId).emit('player_reconnected', player.username);
+      }
+      
+      return player;
+      
+    case 'disconnected':
+      player.disconnected = true;
+      player.disconnectTime = now;
+      io.to(roomId).emit('player_disconnected', player.username);
+      return player;
+      
+    case 'kicked':
+      // Remove from players list
+      room.players.splice(playerIndex, 1);
+      room.readyPlayers = room.readyPlayers.filter(p => p !== player.username);
+      
+      // Add to kicked list
+      if (!roomKickedPlayers[roomId]) {
+        roomKickedPlayers[roomId] = {};
+      }
+      roomKickedPlayers[roomId][player.username] = now;
+      
+      // Notify socket of being kicked if socket ID provided
+      if (socketId) {
+        const socket = io.sockets.sockets.get(socketId);
+        if (socket) {
+          socket.emit('you_were_kicked');
+          socket.leave(roomId);
+        }
+      }
+      
+      io.to(roomId).emit('player_kicked', player.username);
+      return { username: player.username, action: 'kicked' };
+      
+    case 'transition':
+      // Mark as transitioning to another page
+      const socket = io.sockets.sockets.get(socketId);
+      if (socket) {
+        socket.data.transitioningToGame = data.destination;
+      }
+      return player;
+      
+    default:
+      return false;
+  }
+};
+
 /**
  * Broadcast room player updates with rate limiting
  */
-function broadcastRoomUpdate(roomId) {
-  const now = Date.now();
-  
-  if (!lastBroadcastTime[roomId] || (now - lastBroadcastTime[roomId]) > 2000) {
-    const playersList = getPlayersList(roomId);
-    const readyPlayersList = getReadyPlayersList(roomId);
-    
-    io.to(roomId).emit('room_players_list', playersList, readyPlayersList);
-    lastBroadcastTime[roomId] = now;
-  }
-}
-
 /**
- * Force broadcast room updates even if rate limited recently
+ * Unified broadcast function for room updates
+ * @param {string} roomId - The room ID to broadcast to
+ * @param {string} type - The type of update ('players', 'timer', 'settings')
+ * @param {boolean} force - Whether to bypass rate limiting
  */
-function forceBroadcastRoomUpdate(roomId) {
-  const now = Date.now();
+function broadcastRoomUpdate(roomId, type = 'players', force = false) {
+  if (!rooms[roomId]) return false;
   
-  if (!lastBroadcastTime[roomId] || (now - lastBroadcastTime[roomId]) > 500) {
-    const playersList = getPlayersList(roomId);
-    const readyPlayersList = getReadyPlayersList(roomId);
-    
-    io.to(roomId).emit('room_players_list', playersList, readyPlayersList);
-    lastBroadcastTime[roomId] = now;
+  const now = Date.now();
+  const minDelay = force ? 500 : 2000;
+  
+  // Initialize tracking if not present
+  if (!lastBroadcastTime[roomId]) {
+    lastBroadcastTime[roomId] = {};
   }
+  
+  // Check if rate-limited
+  if (!force && 
+      lastBroadcastTime[roomId][type] && 
+      (now - lastBroadcastTime[roomId][type]) < minDelay) {
+    return false;
+  }
+  
+  switch (type) {
+    case 'players':
+      const playersList = getPlayersList(roomId);
+      const readyPlayersList = getReadyPlayersList(roomId);
+      
+      io.to(roomId).emit('room_players_list', playersList, readyPlayersList);
+      lastBroadcastTime[roomId][type] = now;
+      break;
+      
+    case 'timer':
+      if (roomTimers[roomId]) {
+        io.to(roomId).emit(
+          'lobby_timer', 
+          roomTimers[roomId].startTime, 
+          roomTimers[roomId].duration
+        );
+        lastBroadcastTime[roomId][type] = now;
+      }
+      break;
+      
+    case 'settings':
+      if (rooms[roomId].settings) {
+        io.to(roomId).emit('settings_updated', rooms[roomId].settings);
+        lastBroadcastTime[roomId][type] = now;
+      }
+      break;
+  }
+  
+  return true;
 }
 
 /**
@@ -112,21 +306,92 @@ function isPlayerKicked(roomId, username) {
   }
   return false;
 }
-
-/**
- * Remove empty rooms and associated data
- */
-function cleanupEmptyRoom(roomId) {
-  if (rooms[roomId] && rooms[roomId].players.length === 0) {
-    delete rooms[roomId];
-    delete roomKickedPlayers[roomId];
-    delete roomTimers[roomId];
-    roomHosts.delete(roomId);
-    console.log(`Removed empty room ${roomId} and its associated data`);
-    return true;
+function cleanupRooms(specificRoomId = null, force = false) {
+  console.log(specificRoomId ? 
+    `Checking room ${specificRoomId} for cleanup` : 
+    "Running room cleanup check");
+  
+  const now = Date.now();
+  let cleanedCount = 0;
+  
+  // Check specific room or all rooms
+  const roomsToCheck = specificRoomId ? 
+    (rooms[specificRoomId] ? [specificRoomId] : []) : 
+    Object.keys(rooms);
+  
+  for (const roomId of roomsToCheck) {
+    const room = rooms[roomId];
+    
+    // Case 1: Empty room
+    if (!room.players || room.players.length === 0) {
+      if (!force) {
+        const roomAge = now - (room.lastActivity || now);
+        if (roomAge < 30000) {
+          console.log(`Room ${roomId} is empty but was recently active - delaying cleanup`);
+          continue;
+        }
+      }
+      
+      // Clean up the room and associated data
+      delete rooms[roomId];
+      delete roomKickedPlayers[roomId];
+      delete roomTimers[roomId];
+      delete emptyGameRooms[roomId];
+      roomHosts.delete(roomId);
+      
+      cleanedCount++;
+      console.log(`Cleaned up empty room ${roomId}`);
+      continue;
+    }
+    
+    // Case 2: Room with all disconnected players
+    const allDisconnected = room.players.every(player => player.disconnected);
+    
+    if (allDisconnected) {
+      const lastDisconnectTime = Math.max(
+        ...room.players
+          .filter(p => p.disconnectTime)
+          .map(p => p.disconnectTime)
+      );
+      
+      if (force || now - lastDisconnectTime > 2 * 60 * 1000) {
+        delete rooms[roomId];
+        delete roomKickedPlayers[roomId];
+        delete roomTimers[roomId];
+        delete emptyGameRooms[roomId];
+        roomHosts.delete(roomId);
+        
+        cleanedCount++;
+        console.log(`Cleaned up room ${roomId} with all players disconnected`);
+      }
+    }
+    
+    // Case 3: Room with active game but no players
+    if (room.gameState && room.players.length === 0) {
+      if (!emptyGameRooms[roomId]) {
+        emptyGameRooms[roomId] = now;
+        console.log(`Room ${roomId} has active game but no players - marked for delayed cleanup`);
+      } else if (force || now - emptyGameRooms[roomId] > 5 * 60 * 1000) {
+        delete rooms[roomId];
+        delete roomKickedPlayers[roomId];
+        delete roomTimers[roomId];
+        roomHosts.delete(roomId);
+        delete emptyGameRooms[roomId];
+        
+        cleanedCount++;
+        console.log(`Cleaned up abandoned game room ${roomId}`);
+      }
+    }
   }
-  return false;
+  
+  if (cleanedCount > 0) {
+    console.log(`Cleaned up ${cleanedCount} rooms`);
+  }
+  
+  return cleanedCount;
 }
+
+setInterval(() => cleanupRooms(), 60 * 1000);
 
 /**
  * Assign random roles to players in a room
@@ -192,18 +457,75 @@ setInterval(() => {
   }
 }, 5000); 
 
+
+
 // ==============================
 // Socket.IO Connection Handler
 // ==============================
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
 
+  socket.on('reconnect_info', ({roomId, username}) => {
+
+    if (!rooms[roomId]) {
+      console.log(`Room ${roomId} no longer exists - likely due to server restart`);
+      socket.emit('room_not_found', {message: 'This room no longer exists'});
+      return;
+    }
+    socket.data.isReconnection = true;
+    socket.join(roomId);
+    
+    // Send the player back to the game
+    const room = rooms[roomId];
+    if (room) {
+      // Find player by username
+      const existingPlayerIndex = room.players.findIndex(p => p.username === username);
+      let player;
+      
+      if (existingPlayerIndex === -1) {
+        console.log(`Player ${username} not found in room ${roomId}, adding as new player`);
+        player = { id: socket.id, username, role: 'waiting' };
+        room.players.push(player);
+      } else {
+        player = room.players[existingPlayerIndex];
+        player.id = socket.id;
+        delete player.disconnected;
+        delete player.disconnectTime;
+        console.log(`Player ${username} reconnected to room ${roomId}`);
+      }
+      
+      // Send current game state immediately
+      if (room.gameState) {
+        socket.emit('role_assigned', { role: player.role });
+        socket.emit('game_state_update', {
+          phase: room.gameState.phase,
+          phaseTime: room.gameState.phaseTime || room.settings.nightDuration,
+          players: room.players.map(p => ({ username: p.username, isAlive: true })),
+          role: player.role || 'waiting',
+          isAlive: true
+        });
+      }
+    }
+  });
+
+  socket.on('admin_force_cleanup', () => {
+    const cleanedCount = cleanupRooms(null, true);
+    socket.emit('admin_cleanup_result', {
+      cleanedCount,
+      remainingRooms: Object.keys(rooms).length
+    });
+  });
   // ---------- ROOM MANAGEMENT -----------
 
   /**
    * Handle player joining a room
    */
   socket.on('join_room', (roomId, username, isHost) => {
+
+    if (rooms[roomId]) {
+      // For existing rooms, mark as recently active to prevent quick cleanup
+      rooms[roomId].lastActivity = Date.now();
+    }
     // Check if room exists and is locked
     if (rooms[roomId] && rooms[roomId].locked) {
       socket.emit('room_locked_error', roomId);
@@ -233,6 +555,10 @@ io.on('connection', (socket) => {
           doctorEnabled: true,
         },
         locked: false,
+        gameState: null,
+        phaseTimer: null,
+        createdAt: Date.now(),  
+        lastActivity: Date.now()
       };
     }
 
@@ -266,7 +592,7 @@ io.on('connection', (socket) => {
     // Send data to client with a small delay to ensure client-side setup
     setTimeout(() => {
       // Send the player list to all clients
-      forceBroadcastRoomUpdate(roomId);
+      broadcastRoomUpdate(roomId, 'players', true);
       
       // Send timer info directly to this socket
       if (roomTimers[roomId]) {
@@ -299,6 +625,26 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('navigation_intent', (roomId) => {
+    // Store navigation intent in socket data with longer timeout
+    socket.data.navigatingTo = roomId;
+    console.log(`Player ${socket.id} has navigation intent to room ${roomId}`);
+    
+    // Update lastActivity to prevent room cleanup during navigation
+    if (rooms[roomId]) {
+        rooms[roomId].lastActivity = Date.now();
+        console.log(`Updated last activity for room ${roomId} due to navigation intent`);
+    }
+    
+    // Clear navigation intent after 5 seconds (increased from 3)
+    setTimeout(() => {
+        if (socket.data.navigatingTo === roomId) {
+            delete socket.data.navigatingTo;
+            console.log(`Cleared navigation intent for player ${socket.id} to room ${roomId}`);
+        }
+    }, 5000);
+});
+
   /**
    * Handle room locking (prevent new players from joining)
    */
@@ -306,7 +652,7 @@ io.on('connection', (socket) => {
     if (rooms[roomId]) {
       rooms[roomId].locked = true;
       io.to(roomId).emit('room_locked');
-      forceBroadcastRoomUpdate(roomId);
+      broadcastRoomUpdate(roomId, 'players', true);
     }
   });
 
@@ -317,7 +663,7 @@ io.on('connection', (socket) => {
     if (rooms[roomId]) {
       rooms[roomId].locked = false;
       io.to(roomId).emit('room_unlocked');
-      forceBroadcastRoomUpdate(roomId);
+      broadcastRoomUpdate(roomId, 'players', true);
     } 
   });
 
@@ -331,7 +677,7 @@ io.on('connection', (socket) => {
     if (room && !room.readyPlayers.includes(username)) {
       room.readyPlayers.push(username);
       io.to(roomId).emit('player_ready', username);
-      forceBroadcastRoomUpdate(roomId);
+      broadcastRoomUpdate(roomId, 'players', true);
     }
   });
 
@@ -343,7 +689,7 @@ io.on('connection', (socket) => {
     if (room) {
       room.readyPlayers = room.readyPlayers.filter(player => player !== username);
       io.to(roomId).emit('player_not_ready', username);
-      forceBroadcastRoomUpdate(roomId);
+      broadcastRoomUpdate(roomId, 'players', true);
     }
   });
 
@@ -367,7 +713,7 @@ io.on('connection', (socket) => {
     }
     
     // Remove player from the room
-    room.players = room.players.filter(player => player.username !== playerToKick);
+    updatePlayerStatus(roomId, socket.id, null, 'disconnected');
     room.readyPlayers = room.readyPlayers.filter(player => player !== playerToKick);
     
     // Notify the kicked player
@@ -388,7 +734,7 @@ io.on('connection', (socket) => {
     
     // Notify room and update player list
     io.to(roomId).emit('player_kicked', playerToKick);
-    forceBroadcastRoomUpdate(roomId);
+    broadcastRoomUpdate(roomId, 'players', true);
   });
 
   // ---------- TIMER MANAGEMENT -----------
@@ -433,61 +779,98 @@ io.on('connection', (socket) => {
     }
   });
 
+  
+
+  
   // ---------- GAME FLOW -----------
 
   //Game start
 
-  socket.on('start_game', (roomId, gameSettings) => {
-    const room = rooms[roomId];
-    if (!room) {
-      socket.emit('error', 'Room does not exist.');
-      return;
-    }
-  
-    
+  // In the start_game handler
+
+socket.on('start_game', (roomId, gameSettings, devMode) => {
+  const room = rooms[roomId];
+  if (!room) {
+    socket.emit('error', 'Room does not exist.');
+    return;
+  }
+
+  // Prevent multiple game starts
+  if (room.gameStarting || room.gameState) {
+    console.log(`Ignoring duplicate game start request for room ${roomId}`);
+    return;
+  }
+
+  if (!devMode) {
     // Check if the number of players is within the allowed range
     const playerCount = room.players.length;
     if (playerCount < 4 || playerCount > 12) {
       socket.emit('game_start_error', 'The number of players must be between 4 and 12 to start the game.');
       return;
     }
+  }
   
+  // Set gameStarting flag and store when it began
+  room.gameStarting = true;
+  room.gameStartTime = Date.now();
 
-    // Store settings for the game
-    rooms[roomId].settings = gameSettings || rooms[roomId].settings;
+  // Store settings for the game
+  room.settings = gameSettings || room.settings;
 
-    const initialState = {
-      transitioning: true,
-      phase: 'night',
-      phaseTime: room.settings.nightDuration,
-      players: room.players.map(player => ({
-        username: player.username,
-        isAlive: true
-      })),
-    };
+  const initialState = {
+    transitioning: true,
+    phase: 'night',
+    phaseTime: room.settings.nightDuration,
+    players: room.players.map(player => ({
+      username: player.username,
+      isAlive: true
+    })),
+    settings: room.settings
+  };
 
-    io.to(roomId).emit('game_started', initialState);
-  
-  
-      // Broadcast the current countdown value to all clients in the room
-      setTimeout(() => {
-        // NOW start the countdown
-        const countdownDuration = 5; // 5 seconds
-        io.to(roomId).emit('start_countdown', countdownDuration);
-        
-        let remainingTime = countdownDuration;
-        io.to(roomId).emit('countdown_update', remainingTime);
-        
-        const countdownInterval = setInterval(() => {
-          remainingTime--;
-          io.to(roomId).emit('countdown_update', remainingTime);
-          
-          if (remainingTime <= 0) {
-            clearInterval(countdownInterval);
-            
-            // Continue with role assignment and game flow...
-            const playersWithRoles = assignRolesToPlayers(roomId);
+  // Mark all players as transitioning
+  room.players.forEach(player => {
+    const playerSocket = io.sockets.sockets.get(player.id);
+    if (playerSocket) {
+      playerSocket.data.transitioningToGame = roomId;
+    }
+  });
+
+  // Send initial game state to all clients
+  io.to(roomId).emit('game_started', initialState);
+
+  // Set a clear end for the gameStarting state - exactly 10 seconds
+  setManagedTimeout(`game_starting_${roomId}`, () => {
+    if (rooms[roomId]) {
+      console.log(`Game in room ${roomId} has fully started, clearing gameStarting flag`);
+      rooms[roomId].gameStarting = false;
       
+      // Initialize the proper game state if not done already
+      if (!rooms[roomId].gameState) {
+        rooms[roomId].gameState = initialState;
+      }
+    }
+  }, 10000);
+
+  // Start the game countdown after a short delay
+  setManagedTimeout(`game_countdown_${roomId}`, () => {
+    // Start the countdown before role assignment
+    const countdownDuration = 5; // 5 seconds
+    io.to(roomId).emit('start_countdown', countdownDuration);
+    
+    let remainingTime = countdownDuration;
+    io.to(roomId).emit('countdown_update', remainingTime);
+    
+    const countdownInterval = setInterval(() => {
+      remainingTime--;
+      io.to(roomId).emit('countdown_update', remainingTime);
+      
+      if (remainingTime <= 0) {
+        clearInterval(countdownInterval);
+        
+        // Assign roles to players
+        const playersWithRoles = assignRolesToPlayers(roomId);
+        
         // Send each player their role individually
         playersWithRoles.forEach((player) => {
           const playerSocket = io.sockets.sockets.get(player.id);
@@ -495,32 +878,190 @@ io.on('connection', (socket) => {
             playerSocket.emit('assign_role', { role: player.role });
           }
         });
+        
+        // Wait for role reveal animation to complete, then start the first phase
+        setManagedTimeout(`start_phase_${roomId}`, () => {
+          startPhaseTimer(roomId);
+        }, 3000);
       }
     }, 1000);
   }, 1000);
- }); // Short delay to ensure everyone is on the GamePag
+});
 
   /**
    * Handle player joining a game in progress
    */
   socket.on('join_game', (roomId, username) => {
-    socket.join(roomId);
+
     const room = rooms[roomId];
-    if (room) {
-      // Send initial game state to player
-      io.to(socket.id).emit('role_assigned', 'waiting');
+    socket.join(roomId);
+    console.log(`Player ${username} (socket ${socket.id}) joining game ${roomId}`);
+
+    if (!room) {
+      console.log(`Room ${roomId} does not exist`);
+      return;
+    }
+    
+    // Find the player by username instead of socket ID for reconnections
+    const existingPlayerIndex = room.players.findIndex(p => p.username === username);
+    let existingPlayer;
+    
+    if (existingPlayerIndex === -1) {
+      // New player joining
+      existingPlayer = { id: socket.id, username, role: 'waiting' };
+      room.players.push(existingPlayer);
+    } else {
+      // Reconnecting player
+      existingPlayer = room.players[existingPlayerIndex];
+      existingPlayer.id = socket.id;
+      
+      // Clear disconnected status if reconnecting
+      if (existingPlayer.disconnected) {
+        delete existingPlayer.disconnected;
+        delete existingPlayer.disconnectTime;
+        io.to(roomId).emit('player_reconnected', username);
+      }
+    }
+
+    const currentRole = existingPlayer.role || 'waiting';
+    
+    io.to(socket.id).emit('role_assigned', currentRole);
+    
+    // Check if game state exists before accessing its properties
+    if (room.gameState) {
       io.to(socket.id).emit('game_state_update', {
-        phase: 'night',
-        phaseTime: room.settings.nightDuration,
+        phase: room.gameState.phase,
+        phaseTime: room.gameState.phaseTime || room.settings.nightDuration,
         players: room.players.map(player => ({ 
           username: player.username, 
           isAlive: true 
         })),
-        role: 'waiting',
+        role: currentRole,
+        isAlive: true,
+      });
+    } else {
+      // Handle case when game hasn't started yet
+      io.to(socket.id).emit('game_state_update', {
+        phase: 'waiting',
+        phaseTime: 0,
+        players: room.players.map(player => ({ 
+          username: player.username, 
+          isAlive: true 
+        })),
+        role: currentRole,
         isAlive: true,
       });
     }
   });
+
+  socket.on('transition_to_game', (roomId) => {
+    // Mark this socket as transitioning to game in server-side memory
+    socket.data.transitioningToGame = roomId;
+    console.log(`Player ${socket.id} transitioning to game ${roomId}`);
+  });
+  
+  socket.on('leave_game_room', (roomId) => {
+    if (!rooms[roomId]) {
+      console.log(`Ignoring leave request for non-existent room ${roomId}`);
+      return;
+    }
+  
+    console.log(`Processing leave_game_room for ${socket.id} from room ${roomId}`);
+  
+    // Centralized check for whether to ignore leave request
+    const shouldIgnoreLeave = () => {
+      // Check for navigation intent
+      if (socket.data.navigatingTo) {
+        console.log(`Ignoring leave - player ${socket.id} is navigating to ${socket.data.navigatingTo}`);
+        return true;
+      }
+  
+      // Check if this is the room being created 
+      const creatingRoomId = socket.handshake.query.creating_room_id;
+      if (creatingRoomId === roomId) {
+        console.log(`Player ${socket.id} is creating this room - not removing`);
+        return true;
+      }
+  
+      // Check for page transitions during game
+      const isGameInProgress = rooms[roomId]?.gameState !== null || rooms[roomId]?.gameStarting;
+      const isPageTransition = socket.data.transitioningToGame === roomId || 
+                              roomId === socket.handshake.query.transitioning;
+      
+      if (isGameInProgress && isPageTransition) {
+        console.log(`Player ${socket.id} is just changing pages during game - not removing`);
+        return true;
+      }
+  
+      return false;
+    };
+  
+    // If any ignore conditions are met, don't process the leave
+    if (shouldIgnoreLeave()) {
+      return;
+    }
+  
+    console.log(`Player ${socket.id} explicitly leaving game room ${roomId}`);
+    
+    // Leave the Socket.IO room
+    socket.leave(roomId);
+    
+    const room = rooms[roomId];
+    if (room) {
+      // Find player in this room
+      const playerIndex = room.players.findIndex(player => player.id === socket.id);
+      if (playerIndex === -1) {
+        console.log(`Socket ${socket.id} not found in room's player list - skipping removal`);
+        return;
+      }
+  
+      const playerUsername = room.players[playerIndex].username;
+  
+      // Remove player data
+      room.players.splice(playerIndex, 1);
+      room.readyPlayers = room.readyPlayers.filter(player => player !== playerUsername);
+      
+      // Notify other players
+      io.to(roomId).emit('player_left', playerUsername);
+      broadcastRoomUpdate(roomId, 'players', true);
+      
+      // Check if room should be cleaned up
+      cleanupRooms(roomId);
+    }
+  });
+
+  socket.on('leave_any_previous_games', () => {
+  // Find all rooms this socket is in and leave them
+  for (const roomId in rooms) {
+    if (rooms[roomId].players.some(p => p.id === socket.id)) {
+      const room = rooms[roomId];
+      const playerIndex = room.players.findIndex(player => player.id === socket.id);
+      
+      if (playerIndex !== -1) {
+        const playerUsername = room.players[playerIndex].username;
+        
+        // Don't remove players from active games, just mark as disconnected
+        if (room.gameState || room.gameStarting) {
+          room.players[playerIndex].disconnected = true;
+          room.players[playerIndex].disconnectTime = Date.now();
+          socket.leave(roomId);
+          io.to(roomId).emit('player_disconnected', playerUsername);
+        } else {
+          // Remove from players and ready players arrays
+          room.players.splice(playerIndex, 1);
+          room.readyPlayers = room.readyPlayers.filter(player => player !== playerUsername);
+          socket.leave(roomId);
+          io.to(roomId).emit('player_left', playerUsername);
+        }
+        
+        broadcastRoomUpdate(roomId, 'players', true);
+      }
+      
+      // Clean up the room if it's now empty
+      cleanupRooms(roomId);
+    }
+  }
+});
 
   // ---------- CONNECTION MANAGEMENT -----------
 
@@ -536,20 +1077,21 @@ io.on('connection', (socket) => {
       const disconnectedPlayer = room.players.find(player => player.id === socket.id);
       
       if (disconnectedPlayer) {
-        // Remove player from the room
-        room.players = room.players.filter(player => player.id !== socket.id);
-        room.readyPlayers = room.readyPlayers.filter(
-          player => player !== disconnectedPlayer.username
-        );
+        // IMPORTANT: Check if there's a gameState OR if a game is about to start
+        if (room.gameState || room.gameStarting) {
+          console.log(`Player ${socket.id} disconnected from active game ${roomId} - marking as disconnected but keeping in room`);
+          disconnectedPlayer.disconnected = true;
+          disconnectedPlayer.disconnectTime = Date.now();
+          
+          // Notify room of temporary disconnect
+          io.to(roomId).emit('player_disconnected', disconnectedPlayer.username);
+          broadcastRoomUpdate(roomId, 'players', true);
+          continue; // Skip to next room without removing player
+        }
         
-        // Notify room of player departure
-        io.to(roomId).emit('player_left', disconnectedPlayer.username);
-        
-        // Update player list
-        forceBroadcastRoomUpdate(roomId);
-        
-        // Clean up empty rooms
-        cleanupEmptyRoom(roomId);
+        // Only remove player if not in active game
+        console.log(`Removing disconnected player ${socket.id} from room ${roomId} (no active game)`);
+        updatePlayerStatus(roomId, socket.id, null, 'disconnected');
       }
     }
   });

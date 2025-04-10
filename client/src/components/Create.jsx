@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { LobbyContext } from '../context/LobbyContext';
-import socket from '../services/socket';
+import socket, { leaveGame, GameStorage } from '../services/socket';
 
 const CreateRoom = () => {
     const [hostName, setHostName] = useState('');
@@ -17,11 +17,21 @@ const CreateRoom = () => {
             return;
         }
 
+        const oldRoomId = GameStorage.getActiveRoom();
+        if (oldRoomId) {
+            console.log(`Leaving previous room ${oldRoomId} before creating new room`);
+            leaveGame(oldRoomId);
+        }
+        
+        socket.emit('leave_any_previous_games');
         const newRoomId = uuidv4();
+
+        GameStorage.setCreatingRoom(newRoomId);
         addPlayer(hostName);
         setRoomHost(hostName);
+
+        socket.emit('navigation_intent', newRoomId);
         socket.emit('join_room', newRoomId, hostName, true);
-        navigate(`/lobby/${newRoomId}`, { state: { username: hostName, isHost: true } });
     };
 
     // Socket event handlers
@@ -44,6 +54,7 @@ const CreateRoom = () => {
         socket.on('join_room_success', handleJoinRoomSuccess);
 
         return () => {
+            GameStorage.clearCreatingRoom();
             socket.off('room_locked_error', handleRoomLockedError);
             socket.off('join_room_success', handleJoinRoomSuccess);
         };

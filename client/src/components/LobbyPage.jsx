@@ -1,11 +1,15 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { LobbyContext } from '../context/LobbyContext';
-import socket from '../services/socket';
+import socket, { GameStorage } from '../services/socket';
 import styles from './LobbyPage.module.css';
 import Countdown, { zeroPad } from 'react-countdown';
 
 const LobbyPage = () => {
+
+  // Dev mode
+  const [devMode, setDevMode] = useState(false);
+
   // Router hooks
   const { roomId } = useParams();
   const location = useLocation();
@@ -223,16 +227,79 @@ const LobbyPage = () => {
   };
 
   const handleStartGame = () => {
-  if (isHost && readyPlayers.length === players.length) {
-    socket.emit('start_game', roomId, gameSettings);
-    // REMOVE the immediate navigate - let all players follow the same flow
-    // Don't navigate here! Let socket events handle it
-  } else if (players.length < 4 || players.length > 12) {
-    alert('The number of players must be between 4 and 12 to start the game.');
-  } else if (readyPlayers.length !== players.length) {
-    alert('All players must be ready to start the game.');
-  }
-};
+    if (isHost && (devMode || readyPlayers.length === players.length)) {
+      // Set a flag in localStorage to indicate we're transitioning to game
+      GameStorage.setTransitioning(roomId);
+      
+      // Emit the start game event
+      socket.emit('start_game', roomId, gameSettings, devMode);
+      
+      // Don't navigate here - wait for the game_started event
+    } else if (!devMode && (players.length < 4 || players.length > 12)) {
+      alert('The number of players must be between 4 and 12 to start the game.');
+    } else if (!devMode && readyPlayers.length !== players.length) {
+      alert('All players must be ready to start the game.');
+    }
+  };
+
+  useEffect(() => {
+    // Listen for game started event
+    socket.on('game_started', (initialState) => {
+      // Navigate to the game page after receiving confirmation
+      navigate(`/game/${roomId}`, { 
+        state: { 
+          username, 
+          gameSettings 
+        } 
+      });
+    });
+  
+    return () => {
+      // Only leave the room if we're not transitioning to a game
+      if (!GameStorage.getTransitioning()) {
+        socket.emit('leave_game_room', roomId);
+      }
+      socket.off('game_started');
+    };
+  }, []);
+
+  useEffect(() => {
+    // Change to Alt+D for "Developer mode" - less likely to conflict with browser shortcuts
+    const handleKeyDown = (e) => {
+      console.log('Key pressed:', e.key, 'Alt:', e.altKey);
+      
+      if (e.altKey && (e.key === 'd' || e.key === 'D')) {
+        e.preventDefault();
+        console.log('Dev mode shortcut activated');
+        const newDevModeState = !devMode;
+        setDevMode(newDevModeState); // Directly use setState instead of toggleDevMode
+        
+        const notification = document.createElement('div');
+        notification.textContent = newDevModeState ? 'Dev Mode Activated' : 'Dev Mode Deactivated';
+        notification.style.position = 'fixed';
+        notification.style.top = '20px';
+        notification.style.left = '50%';
+        notification.style.transform = 'translateX(-50%)';
+        notification.style.backgroundColor = newDevModeState ? '#4CAF50' : '#ff4d4d';
+        notification.style.color = 'white';
+        notification.style.padding = '10px 20px';
+        notification.style.borderRadius = '5px';
+        notification.style.zIndex = '1000';
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 2000);
+      }
+    };
+  
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [devMode]);
+
 
   const handleLockRoomToggle = () => {
     if (isHost) {
@@ -490,10 +557,10 @@ const LobbyPage = () => {
           <>
             <button
               onClick={handleStartGame}
-              disabled={!allPlayersReady || players.length < 4 || players.length > 12}
-              className={styles.startButton}
-            >
-              Start Game
+              disabled={!devMode && (!allPlayersReady || players.length < 4 || players.length > 12)}
+              className={`${styles.startButton} ${devMode ? styles.devModeActive : ''}`}
+              >
+                {devMode ? "⚡ Start Game" : "Start Game"}
             </button>
             
             <button 

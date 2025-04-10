@@ -7,18 +7,22 @@ import AboutPage from './components/AboutPage';
 import GamePage from './components/GamePage'; 
 import JoinRoom from './components/Join';
 import CreateRoom from './components/Create';
-import socket from './services/socket';
+import { GameStorage } from './services/socket';
 
 
 
 function App() {
   useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      // This only runs when the user closes the tab/window
+      console.log('User leaving application - saving state');
+      GameStorage.setLastSessionTime(Date.now());
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
     // Clean up socket connection when app unmounts
     return () => {
-      console.log('Disconnecting socket on app unmount');
-      if (socket.connected) {
-        socket.disconnect();
-      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 

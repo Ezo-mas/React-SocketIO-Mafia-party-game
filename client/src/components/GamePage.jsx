@@ -1,91 +1,298 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import ReactHowler from 'react-howler'
-import socket from '../services/socket';
+import socket, { GameStorage } from '../services/socket';
 import styles from './GamePage.module.css';
 import roleData from '../data/roleData';
 
+
 const GamePage = () => {
+
+  // ===== PARAMS & LOCATION STATE =====
   const { roomId } = useParams();
   const location = useLocation();
-  const { username } = location.state || { username: 'Guest' };
+  const locationState = location.state || {};
+  const storedUsername = GameStorage.getUsername();
+  const storedSettings = GameStorage.getGameSettings();
+  const username = locationState.username || storedUsername || 'Guest';
+  const locationGameSettings = locationState.gameSettings || storedSettings;
+  const isPageRefresh = useRef(GameStorage.getRefreshing());
+  const hasJoined = useRef(false);
+  const isInitialGameUpdate = useRef(false)
+  const isTransitioningFromLobby = GameStorage.getTransitioning() === roomId;
+
+  // ===== GAME STATE =====
+  const [gameFlow, setGameFlow] = useState(isTransitioningFromLobby ? 'loading' : (isPageRefresh ? 'playing' : 'loading'));
   const [gameState, setGameState] = useState({
-    phase: 'night', // 'day' or 'night'
-    phaseTime: 30, // time remaining in current phase
-    players: [], // Array of players (without roles)
-    role: 'waiting', // Player's assigned role
+    phase: 'night',
+    phaseTime: 0,
+    players: [],
+    role: '',
     isAlive: true,
+    transitioning: false
+  });
+  const [gameSettings, setGameSettings] = useState({
+    dayDuration: 180,
+    nightDuration: 180,
+    mafiaPercentage: 30,
+    detectiveEnabled: true,
+    doctorEnabled: true,
+    civilianCount: 0,
   });
 
-  // State for managing the fullscreen phase transition
+  // ===== UI STATE =====
+  const [countdown, setCountdown] = useState(0); 
+  const [showGameScreen, setShowGameScreen] = useState(false); 
+  const [showRoles, setShowRoles] = useState(false); 
+  const [isFadingOut, setIsFadingOut] = useState(false);
+  
+  // ===== PHASE TRANSITION STATE =====
   const [isPhaseTransitioning, setIsPhaseTransitioning] = useState(false);
-  const [isFadingOutTransition, setIsFadingOutTransition] = useState(false); // State for fade-out
-  const [transitionPhase, setTransitionPhase] = useState(null); // Stores the upcoming phase ('day' or 'night') during transition
+  const [isFadingOutTransition, setIsFadingOutTransition] = useState(false); 
+  const [transitionPhase, setTransitionPhase] = useState(null);
 
-  useEffect(() => {
-    if (gameState.phaseTime <= 0 || isPhaseTransitioning) {
-        if (isPhaseTransitioning && gameState.phaseTime > 0) {
-             return;
-        }
-        if (!isPhaseTransitioning) {
-            setIsFadingOutTransition(false);
-            setTransitionPhase(null);
-        }
-        return;
-    }
-
-    let intervalId = setInterval(() => {
-      setGameState((prevGameState) => {
-        if (isPhaseTransitioning) return prevGameState;
-
-        const newTime = prevGameState.phaseTime - 1;
-
-        if (newTime <= 0) {
-          const nextPhase = prevGameState.phase === 'night' ? 'day' : 'night';
-          setTransitionPhase(nextPhase); // Store the phase for the transition screen
-          setIsFadingOutTransition(false); // Ensure fade-out is reset
-          setIsPhaseTransitioning(true); // Show the transition screen (fade-in)
-
-          const fadeOutTimer = setTimeout(() => {
-            setIsFadingOutTransition(true);
-
-            const endTransitionTimer = setTimeout(() => {
-              setGameState(currentState => ({
-                ...currentState,
-                phase: nextPhase,
-                phaseTime: 30,
-              }));
-              setIsPhaseTransitioning(false); 
-              setTransitionPhase(null);
-            }, 1000);
-
-
-          }, 7000);
-
-          return { ...prevGameState, phaseTime: 0 };
-        } else {
-
-          return { ...prevGameState, phaseTime: newTime };
-        }
-      });
-    }, 1000);
-
-
-    return () => {
-      clearInterval(intervalId);
-    };
-
-  }, [gameState.phaseTime, isPhaseTransitioning]);
-
+  // ===== ROLE INFORMATION STATE =====
   const [selectedRole, setSelectedRole] = useState(null);
   const [showRoleInfo, setShowRoleInfo] = useState(false);
-  const [countdown, setCountdown] = useState(0); // Countdown timer state
-  const [showRoles, setShowRoles] = useState(false); // State to show role cards
-  const [isFadingOut, setIsFadingOut] = useState(false); // State to trigger fade-out animation FOR ROLE CARDS
-  const [showGameScreen, setShowGameScreen] = useState(false); // State to show the main game screen
+  
+  // ===== CHAT STATE =====
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
 
+  // ===== GAME SETUP EFFECTS =====
+  // Apply host settings
+  useEffect(() => {
+    if (locationGameSettings) {
+      console.log("Applying host settings:", locationGameSettings);
+      setGameSettings(locationGameSettings);
+    }
+  }, [locationGameSettings]);
+
+  useEffect(() => {
+    if (username && username !== 'Guest') GameStorage.setUsername(username);
+    if (roomId) GameStorage.setActiveRoom(roomId);
+    if (locationGameSettings) GameStorage.setGameSettings(locationGameSettings);
+    
+    window.addEventListener('beforeunload', () => {
+      GameStorage.setRefreshing();
+    });
+    
+    return () => {
+      window.removeEventListener('beforeunload', () => {});
+    };
+  }, [username, roomId, locationGameSettings]);
+
+  useEffect(() => {
+    const wasRefreshed = GameStorage.getRefreshing();
+    
+    if (wasRefreshed) {
+      isPageRefresh.current = true;
+      GameStorage.clearRefreshing();
+      console.log('Page was refreshed, will maintain game state');
+      
+      const storedRole = GameStorage.getPlayerRole();
+      const storedPhase = GameStorage.getGamePhase();
+      const isNewRoomCreation = GameStorage.getCreatingRoom() === 'true';
+      
+      if (isNewRoomCreation) {
+        console.log('New room creation detected - using loading state');
+        GameStorage.clearCreatingRoom();
+        setGameFlow('loading');
+      } else if (storedRole || storedPhase) {
+        console.log('Game in progress refreshed - using playing state');
+        setGameFlow('playing');
+      } else {
+        console.log('No game in progress - using loading state');
+        setGameFlow('loading');
+      }
+    }
+  }, []);
+
+  // ===== SOCKET COMMUNICATION =====
+  // Chat messages
+  useEffect(() => {
+    socket.on('receive_message', (data) => {
+      setMessages((prevMessages) => [...prevMessages, data]);
+    });
+
+    return () => {
+      socket.off('receive_message');
+    };
+  }, []);
+
+  // Main socket event handlers
+  useEffect(() => {
+
+    
+    if (!hasJoined.current) {
+    console.log("GamePage mounting, joining room", roomId);
+    socket.emit('join_game', roomId, username);
+    hasJoined.current = true;
+  }
+    
+    const clearTransitionFlag = setTimeout(() => {
+      if (GameStorage.getTransitioning() === roomId) {
+        console.log('Clearing transition flag after delay');
+        GameStorage.clearTransitioning();
+      }
+    }, 2000);
+    
+    // Socket event handlers
+    const handleCountdown = (countdownDuration) => {
+      console.log("Countdown started with duration:", countdownDuration);
+      setCountdown(countdownDuration);
+      setGameFlow('countdown');
+      setShowGameScreen(false);
+       
+    };
+
+    const handleGameStateUpdate = (updatedState) => {
+      console.log("Received game state update:", updatedState);
+      setGameState(prevState => ({
+        ...prevState,
+        ...updatedState
+      }));
+      
+      setShowRoles(false);
+
+      if (['countdown', 'roleReveal'].includes(gameFlow)) {
+        console.log(`Already in ${gameFlow} state, not changing game flow`);
+        return;
+      }
+
+      if (isInitialGameUpdate.current) {
+        console.log("Initial game update received, ensuring we stay in loading state");
+        setGameFlow('loading');
+        setShowGameScreen(false);
+        return
+    };
+
+    if (updatedState.phase === "waiting") {
+      console.log("Game is in waiting state but showing loading");
+      setShowGameScreen(false);
+    } else {
+      if (isPageRefresh.current) {
+        console.log("Page refreshed - going straight to playing state");
+        setGameFlow('playing');
+      } else {
+        console.log("Fresh game start - staying in loading state");
+        setGameFlow('loading');
+      }
+      setShowGameScreen(true);
+    }
+  };
+
+    const handleCountdownUpdate = (remainingTime) => {
+      console.log("Countdown update:", remainingTime);
+      setCountdown(remainingTime);
+    };
+
+    const handleRoleAssigned = ({ role }) => {
+      console.log("Role assigned:", role);
+      GameStorage.setPlayerRole(role);
+      setGameFlow('roleReveal');
+      setShowGameScreen(false);
+
+      setGameState((prev) => ({
+        ...prev,
+        role,
+      }));
+      setShowRoles(true);
+
+      
+        setTimeout(() => {
+          setIsFadingOut(true); 
+          setTimeout(() => {
+            setShowRoles(false); 
+            setIsFadingOut(false); 
+            setGameFlow('playing');
+            setShowGameScreen(true); 
+          }, 1000); // Match the duration of the fade-out animation
+        }, 2000); // Role card display duration
+    };
+
+    const handlePhaseTimerUpdate = (data) => {
+      setGameState(prevState => ({
+        ...prevState,
+        phaseTime: data.remainingTime
+      }));
+    };
+
+    const handlePhaseChange = (data) => {
+      setTransitionPhase(data.phase);
+      setIsPhaseTransitioning(true);
+      setIsFadingOutTransition(false);
+      
+      setTimeout(() => {
+        setIsFadingOutTransition(true);
+        setTimeout(() => {
+          setGameState(prevState => ({
+            ...prevState,
+            phase: data.phase
+          }));
+          setIsPhaseTransitioning(false);
+          setTransitionPhase(null);
+        }, 1000);
+      }, 4000);
+    };
+
+    const handleGameStarted = (newGameState) => {
+      console.log("Game started with state:", newGameState);
+      GameStorage.setGamePhase(newGameState.phase);
+      
+      if (newGameState.settings) {
+        setGameSettings(newGameState.settings);
+        GameStorage.setGameSettings(newGameState.settings);
+      }
+      
+      if (newGameState.phase && !newGameState.phaseTime) {
+        newGameState.phaseTime = newGameState.phase === 'day' ? 
+        gameSettings.dayDuration : 
+        gameSettings.nightDuration;
+      }
+    
+      setGameFlow('loading');
+      setShowGameScreen(false);
+      
+      setIsPhaseTransitioning(false);
+      setIsFadingOutTransition(false);
+      setTransitionPhase(null);
+      setGameState(newGameState);
+    
+      isInitialGameUpdate.current = true;
+      setTimeout(() => {
+        isInitialGameUpdate.current = false;
+      }, 1000);
+    };
+
+    socket.on('phase_timer_update', handlePhaseTimerUpdate);
+    socket.on('phase_change', handlePhaseChange);
+    socket.on('start_countdown', handleCountdown);
+    socket.on('countdown_update', handleCountdownUpdate); 
+    socket.on('assign_role', handleRoleAssigned);
+    socket.on('game_started', handleGameStarted);
+    socket.on('game_state_update', handleGameStateUpdate);
+
+
+    return () => {
+      clearTimeout(clearTransitionFlag);
+
+      if (!isPageRefresh.current && !GameStorage.getTransitioning()) {
+        socket.emit('leave_game_room', roomId);
+      }
+
+      socket.off('start_countdown', handleCountdown);
+      socket.off('countdown_update', handleCountdownUpdate);
+      socket.off('assign_role', handleRoleAssigned);
+      socket.off('game_started', handleGameStarted);
+      socket.off('phase_timer_update', handlePhaseTimerUpdate);
+      socket.off('phase_change', handlePhaseChange);
+      socket.off('game_state_update', handleGameStateUpdate);
+    };
+  }, [roomId, username, gameSettings, gameFlow]);
+
+  // ===== EVENT HANDLERS =====
+  // Chat message sending
   const sendMessage = () => {
     if (newMessage.trim() !== '') {
       socket.emit('chat_message', { roomId, username, message: newMessage });
@@ -93,18 +300,18 @@ const GamePage = () => {
     }
   };
 
-  // Function to handle role click
+   // Role info handlers
   const handleRoleClick = (role) => {
     setSelectedRole(role);
     setShowRoleInfo(true);
   };
 
-  // Function to close role info
   const handleCloseRoleInfo = () => {
     setShowRoleInfo(false);
   };
 
-  // Role information tooltip/modal
+  // ===== COMPONENT DEFINITIONS =====
+  // Role info modal
   const RoleInfoModal = ({ role, onClose }) => {
     if (!role) return null;
 
@@ -122,16 +329,6 @@ const GamePage = () => {
       </div>
     );
   };
-
-  useEffect(() => {
-    socket.on('receive_message', (data) => {
-      setMessages((prevMessages) => [...prevMessages, data]);
-    });
-
-    return () => {
-      socket.off('receive_message');
-    };
-  }, [socket]);
 
    // Roles section component
    const RolesSection = () => {
@@ -161,68 +358,9 @@ const GamePage = () => {
     );
   };
 
-
-  useEffect(() => {
-    // Join game room
-    socket.emit('join_game', roomId, username);
-
-    // Listen for server events
-    const handleCountdown = (countdownDuration) => {
-      console.log("Countdown started with duration:", countdownDuration);
-      setCountdown(countdownDuration);
-    };
-
-    const handleCountdownUpdate = (remainingTime) => {
-      console.log("Countdown update:", remainingTime);
-      setCountdown(remainingTime);
-    };
-
-    const handleRoleAssigned = ({ role }) => {
-      console.log("Role assigned:", role);
-      setGameState((prev) => ({
-        ...prev,
-        role,
-      }));
-      setShowRoles(true);
-
-      // Hide the role cards after 7 seconds and show the game screen
-        setTimeout(() => {
-          setIsFadingOut(true); // Start fade-out animation FOR ROLE CARDS
-          setTimeout(() => {
-            setShowRoles(false); // Hide role cards
-            setIsFadingOut(false); // Reset fade-out state FOR ROLE CARDS
-            setShowGameScreen(true); // Show the main game screen
-          }, 1000); // Match the duration of the fade-out animation
-        }, 2000); // Role card display duration
-    };
-
-    const handleGameStarted = (newGameState) => {
-      console.log("Game started with state:", newGameState);
-      // Ensure phase transition state is reset if game starts fresh
-      setIsPhaseTransitioning(false);
-      setIsFadingOutTransition(false);
-      setTransitionPhase(null);
-      setGameState(newGameState);
-    };
-
-    socket.on('start_countdown', handleCountdown);
-    socket.on('countdown_update', handleCountdownUpdate); // Listen for countdown updates
-    socket.on('assign_role', handleRoleAssigned);
-    socket.on('game_started', handleGameStarted);
-
-    return () => {
-      socket.off('start_countdown', handleCountdown);
-      socket.off('countdown_update', handleCountdownUpdate);
-      socket.off('assign_role', handleRoleAssigned);
-      socket.off('game_started', handleGameStarted);
-    };
-  }, [roomId, username]);
-
-  // ---- RENDER LOGIC ----
-
-  // 1. Render fullscreen transition if active
+  // ===== RENDER LOGIC =====
+  // Phase transitions have highest priority
   if (isPhaseTransitioning) {
-    // Apply fade-in initially, then fade-out when isFadingOutTransition is true
     const transitionContainerClass = `
       ${styles.animationContainer}
       ${styles.fullscreenTransition}
@@ -240,107 +378,122 @@ const GamePage = () => {
     );
   }
 
-  // 2. Render countdown if active
-  if (countdown > 0) {
-    return (
-      <div className={styles.countdownContainer}>
-        <h1>Game Starting In...</h1>
-        <ReactHowler
+  // Render appropriate UI based on game flow
+  switch(gameFlow) {
+    case 'loading':
+      return (
+        <div className={styles.countdownContainer}>
+          <h1>Preparing Game...</h1>
+          <div className={styles.loadingSpinner}>
+            <div className={styles.spinnerInner}></div>
+          </div>
+          <h3>Get ready for the night...</h3>
+        </div>
+      );
+    case 'countdown':
+      return (
+        <div className={styles.countdownContainer}>
+          <h1>Game Starting In...</h1>
+          <ReactHowler
             src='../bell.mp3'
             playing={true}
             loop={true}
-            />
-        <h2 className={countdown <= 3 ? styles.redCountdown : ''}>{countdown} seconds</h2>
-      </div>
-    );
-  }
-
-  // 3. Render role reveal if active (using the original isFadingOut state for role cards)
-  if (showRoles) {
-    return (
-      <div className={`${styles.roleCardsContainer} ${isFadingOut ? styles.fadingOut : ''}`}>
-        <div className={styles.roleCard}>
-          <h2>Your Role</h2>
-          <p className={styles.role}>{gameState.role}</p>
+          />
+          <h2 className={countdown <= 3 ? styles.redCountdown : ''}>{countdown} seconds</h2>
+        </div>
+      );
+    
+    case 'roleReveal':
+      return (
+        <div className={`${styles.roleCardsContainer} ${isFadingOut ? styles.fadingOut : ''}`}>
+          <div className={styles.roleCard}>
+            <h2>Your Role</h2>
+            <p className={styles.role}>{gameState.role}</p>
+            <div>
+              <img className={styles.roleImage} src={'../' + gameState.role + '.png'} alt={gameState.role} />
+            </div>
+          </div>
+        </div>
+      );
+      
+    case 'playing':
+      return (
+        <div className={styles.gameContainer}>
           <div>
-           <img className={styles.roleImage} src={'../' + gameState.role + '.png'} alt={gameState.role} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 4. Render main game screen if active
-  if (showGameScreen) {
-    return (
-      // The main container for the game view
-      <div className={styles.gameContainer}>
-
-        <div>
-          <div className={styles.header}>
-            <h1>Mafia Game</h1>
-            <div className={styles.phaseInfo}>
-            <h2>{gameState.phase === 'day' ? 'Day Phase' : 'Night Phase'}</h2>
-            <div className={styles.timer}>
-              Time remaining: {gameState.phaseTime} seconds
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.roleInfo}>
-          <h3>Your Role: {gameState.role}</h3>
-          <p>Status: {gameState.isAlive ? 'Alive' : 'Dead'}</p>
-        </div>
-
-        <div className={styles.mainContent}>
-          <div className={styles.playerGrid}>
-            {gameState.players.map((player, index) => (
-              <div
-                key={index}
-                className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
-              >
-                <div className={styles.playerName}>
-                  {player.username}
-                </div>
-                <div className={styles.playerStatus}>
-                  {player.isAlive ? 'Alive' : 'Dead'}
+            <div className={styles.header}>
+              {/* Remove the "Mafia Game" h1 element and center phase info */}
+              <div className={styles.centeredPhaseInfo}>
+                <h2>{gameState.phase === 'day' ? 'Day Phase' : 'Night Phase'}</h2>
+                <div className={styles.timer}>
+                  {Math.floor(gameState.phaseTime / 60)}:{String(gameState.phaseTime % 60).padStart(2, '0')}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className={styles.actionArea}>
-          <h3>Game Actions</h3>
-          <p>Game implementation coming soon...</p>
-        </div>
-        <RolesSection />
-        <div className={styles['chat-box']}>
-          <div className={styles['chat-messages-container']}>
-            {messages.map((msg, index) => (
-              <div key={index} className={styles['chat-message']}>
-                {msg.username}: {msg.message}
-              </div>
-            ))}
-          </div>
-          <div className={styles['chat-input']}>
-            <input
-              className={styles['chat-input-text']}
-              type="text"
-              placeholder="Type your message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-            />
-              <button type="submit" onClick={sendMessage}>Send</button>
             </div>
+            
+            <div className={styles.roleInfo}>
+              <h3>Your Role: {gameState.role}</h3>
+              <p>Status: {gameState.isAlive ? 'Alive' : 'Dead'}</p>
+            </div>
+    
+            <div className={styles.mainContent}>
+              <div className={styles.playerGrid}>
+                {gameState.players.map((player, index) => (
+                  <div
+                    key={index}
+                    className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
+                  >
+                    <div className={styles.playerName}>
+                      {player.username}
+                    </div>
+                    <div className={styles.playerStatus}>
+                      {player.isAlive ? 'Alive' : 'Dead'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+    
+            <div className={styles.actionArea}>
+              <h3>Game Actions</h3>
+              <p>Game implementation coming soon...</p>
+            </div>
+
+
+            <div className={styles['chat-box']}>
+              <div className={styles['chat-messages-container']}>
+                {messages.map((msg, index) => (
+                  <div key={index} className={styles['chat-message']}>
+                    {msg.username}: {msg.message}
+                  </div>
+                ))}
+              </div>
+              <div className={styles['chat-input']}>
+                <input
+                  className={styles['chat-input-text']}
+                  type="text"
+                  placeholder="Type your message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                />
+                <button type="submit" onClick={sendMessage}>Send</button>
+              </div>
+            </div>
+            <RolesSection />
           </div>
         </div>
-      </div>
-    );
+      );
+      
+    default:
+      return (
+        <div className={styles.countdownContainer}>
+          <h1>Loading Game...</h1>
+          <div className={styles.loadingSpinner}>
+            <div className={styles.spinnerInner}></div>
+          </div>
+        </div>
+      );
   }
-
-  // 5. Render nothing by default if none of the above conditions are met
-  return null;
-};
+}
 
 export default GamePage;
