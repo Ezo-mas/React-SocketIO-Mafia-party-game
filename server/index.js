@@ -242,9 +242,12 @@ function updatePlayerStatus(roomId, socketId, username, status, data = {}) {
  */
 function broadcastRoomUpdate(roomId, type = 'players', force = false) {
   if (!rooms[roomId]) return false;
+
+  const playerCount = rooms[roomId]?.players?.length || 1;
+  const adaptiveMinDelay = Math.max(2000, 1000 * Math.min(playerCount, 8)); // Increase delay with more players
   
   const now = Date.now();
-  const minDelay = force ? 500 : 2000;
+  const minDelay = force ? 500 : adaptiveMinDelay;
   
   // Initialize tracking if not present
   if (!lastBroadcastTime[roomId]) {

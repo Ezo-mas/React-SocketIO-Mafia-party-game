@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { LobbyContext } from '../context/LobbyContext';
 import socket, { GameStorage } from '../services/socket';
@@ -48,6 +48,27 @@ const LobbyPage = () => {
   const playersRef = useRef(players);
   const usernameRef = useRef(username);
   const gameSettingsRef = useRef(gameSettings);
+  const lastUpdateTimeRef = useRef({});
+
+  const handleRoomPlayersList = useCallback((playersList, readyPlayersList) => {
+
+    const now = Date.now();
+    if (!lastUpdateTimeRef.current.players || 
+      (now - lastUpdateTimeRef.current.players) > 500) {
+      
+    // Only update if data has actually changed
+    if (JSON.stringify(playersList) !== JSON.stringify(playersRef.current)) {
+      setPlayers(playersList);
+    }
+    
+    if (JSON.stringify(readyPlayersList) !== JSON.stringify(readyPlayers)) {
+      setReadyPlayers(readyPlayersList);
+    }
+    
+    // Update timestamp
+    lastUpdateTimeRef.current.players = now;
+  }
+}, [readyPlayers]);
   
   // refs updated with latest values
   useEffect(() => {
@@ -101,15 +122,7 @@ const LobbyPage = () => {
       setCountdownDuration(duration);
     };
 
-    const handleRoomPlayersList = (playersList, readyPlayersList) => {
-      if (process.env.NODE_ENV === 'development' && 
-          (players.length !== playersList.length || 
-           !players.every((player, i) => playersList[i] === player))) {
-        console.log("Players list updated:", playersList);
-      }
-      setPlayers(playersList);
-      setReadyPlayers(readyPlayersList);
-    };
+    
 
     const handlePlayerJoined = (newPlayer) => {
       if (!players.includes(newPlayer)) {
@@ -163,6 +176,7 @@ const LobbyPage = () => {
     socket.off('lobby_timer');
     socket.off('you_were_kicked');
     socket.off('player_kicked');
+    
 
     // Register socket event listeners
     socket.on('room_players_list', handleRoomPlayersList);
@@ -176,6 +190,7 @@ const LobbyPage = () => {
     socket.on('lobby_timer', handleLobbyTimer);
     socket.on('you_were_kicked', handleYouWereKicked);
     socket.on('player_kicked', handlePlayerKicked);
+    socket.on('room_players_list', handleRoomPlayersList);
 
     // Cleanup socket listeners on component unmount
     return () => {
@@ -190,8 +205,9 @@ const LobbyPage = () => {
       socket.off('lobby_timer', handleLobbyTimer);
       socket.off('you_were_kicked', handleYouWereKicked);
       socket.off('player_kicked', handlePlayerKicked);
+      socket.off('room_players_list', handleRoomPlayersList);
     };
-  }, [roomId, navigate, addPlayer]);
+  }, [roomId, navigate, addPlayer, handleRoomPlayersList]);
 
   // Calculate civilian count based on other roles
   useEffect(() => {
