@@ -515,8 +515,6 @@ const GamePage = () => {
       
               <div className={styles.mainContent}>
                 <div className={styles.playerGrid}>
-                  {console.log("Rendering players with status:", 
-                    gameState.players.map(p => `${p.username}: ${p.isAlive ? 'Alive' : 'Dead'}`))}
                   {gameState.players.map((player, index) => (
                     <div
                       key={index}
