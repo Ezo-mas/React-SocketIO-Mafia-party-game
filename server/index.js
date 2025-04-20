@@ -839,7 +839,11 @@ socket.on('start_game', (roomId, gameSettings, devMode) => {
     }
   });
 
+  // // Assign roles to players
+  // const playersWithRoles = assignRolesToPlayers(roomId); //need to move this around to fix sync issues with decision making phase
+
   // Send initial game state to all clients
+  console.log(`Emitting game_started event for room ${roomId} with state:`, initialState);
   io.to(roomId).emit('game_started', initialState);
 
   // Set a clear end for the gameStarting state - exactly 10 seconds
@@ -890,6 +894,75 @@ socket.on('start_game', (roomId, gameSettings, devMode) => {
     }, 1000);
   }, 1000);
 });
+
+// Store votes for each room
+const mafiaVotes = {};
+
+// Handle Mafia voting
+socket.on('mafia_vote', ({ roomId, targetUsername }) => {
+  const room = rooms[roomId];
+  if (!room) return;
+
+  const player = room.players.find(p => p.id === socket.id);
+  if (!player || player.role !== 'Mafia') return; // Only Mafia can vote
+
+  if (!mafiaVotes[roomId]) {
+    mafiaVotes[roomId] = {};
+  }
+
+  mafiaVotes[roomId][socket.id] = targetUsername; // Store the vote
+
+  console.log(`Mafia vote: ${player.username} voted for ${targetUsername}`);
+});
+
+// Process votes at the end of the night phase
+function processMafiaVotes(roomId) {
+  const room = rooms[roomId];
+  if (!room || !mafiaVotes[roomId]) return;
+
+  const voteCounts = {};
+  Object.values(mafiaVotes[roomId]).forEach((vote) => {
+    voteCounts[vote] = (voteCounts[vote] || 0) + 1;
+  });
+
+  // Determine the player with the most votes
+  const targetUsername = Object.keys(voteCounts).reduce((a, b) =>
+    voteCounts[a] > voteCounts[b] ? a : b
+  );
+
+  // Mark the target as dead
+  const targetPlayer = room.players.find(p => p.username === targetUsername);
+  if (targetPlayer) {
+    targetPlayer.isAlive = false;
+    console.log(`Mafia killed ${targetUsername}`);
+  }
+
+  // Clear votes for the next night
+  delete mafiaVotes[roomId];
+
+  return targetUsername; // Return the killed player
+}
+
+// Transition to the day phase
+function startDayPhase(roomId) {
+  const room = rooms[roomId];
+  if (!room) return;
+
+  const killedPlayer = processMafiaVotes(roomId);
+
+  // Notify all players about the killed player
+  io.to(roomId).emit('day_phase_start', {
+    killedPlayer: killedPlayer || null,
+    players: room.players.map(p => ({
+      username: p.username,
+      isAlive: p.isAlive,
+    })),
+  });
+
+  // Update the game state
+  room.gameState.phase = 'day';
+  room.gameState.transitioning = false;
+}
 
   /**
    * Handle player joining a game in progress
