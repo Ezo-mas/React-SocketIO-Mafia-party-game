@@ -846,6 +846,13 @@ socket.on('start_game', (roomId, gameSettings, devMode) => {
   console.log(`Emitting game_started event for room ${roomId} with state:`, initialState);
   io.to(roomId).emit('game_started', initialState);
 
+
+  //THIS FIXES MAFIA VOTE SCREEN BUT IS VERY SPAGHETTI :(
+  //testing early initialization of game state
+  if (!rooms[roomId].gameState) {
+    rooms[roomId].gameState = initialState;
+  }
+  
   // Set a clear end for the gameStarting state - exactly 10 seconds
   setManagedTimeout(`game_starting_${roomId}`, () => {
     if (rooms[roomId]) {
