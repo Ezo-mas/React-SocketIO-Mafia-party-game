@@ -148,6 +148,27 @@ const GamePage = () => {
 
     const handleGameStateUpdate = (updatedState) => {
       console.log("Received game state update:", updatedState);
+
+        // Log the players specifically to debug the isAlive status
+        if (updatedState.players) {
+          console.log("Updated player statuses:", 
+            updatedState.players.map(p => `${p.username}: ${p.isAlive ? 'Alive' : 'Dead'}`));
+        }
+        
+        // Make sure we're replacing the entire players array, not just merging properties
+        if (updatedState.players) {
+          setGameState(prevState => ({
+            ...prevState,
+            ...updatedState,
+            players: updatedState.players // Explicitly replace the players array
+          }));
+        } else {
+          setGameState(prevState => ({
+            ...prevState,
+            ...updatedState
+          }));
+        }
+
       setGameState(prevState => ({
         ...prevState,
         ...updatedState
@@ -228,7 +249,9 @@ const GamePage = () => {
         setTimeout(() => {
           setGameState(prevState => ({
             ...prevState,
-            phase: data.phase
+            phase: data.phase,
+            // Add this to update player statuses:
+            players: data.players ? data.players : prevState.players
           }));
           setIsPhaseTransitioning(false);
           setTransitionPhase(null);
@@ -237,6 +260,7 @@ const GamePage = () => {
     };
 
     const handleGameStarted = (newGameState) => {
+      console.log("Game started event received"); // Debugging log
       console.log("Game started with state:", newGameState);
       GameStorage.setGamePhase(newGameState.phase);
       
@@ -251,6 +275,8 @@ const GamePage = () => {
         gameSettings.nightDuration;
       }
     
+
+      console.log("Setting game flow to 'loading'"); //debugging
       setGameFlow('loading');
       setShowGameScreen(false);
       
@@ -489,13 +515,15 @@ const GamePage = () => {
       
               <div className={styles.mainContent}>
                 <div className={styles.playerGrid}>
+                  {console.log("Rendering players with status:", 
+                    gameState.players.map(p => `${p.username}: ${p.isAlive ? 'Alive' : 'Dead'}`))}
                   {gameState.players.map((player, index) => (
                     <div
                       key={index}
                       className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
                     >
                       <div className={styles.playerName}>
-                        {player.username}
+                        {player.username} 
                       </div>
                       <div className={styles.playerStatus}>
                         {player.isAlive ? 'Alive' : 'Dead'}
@@ -506,7 +534,6 @@ const GamePage = () => {
               </div>
       
                       {gameState.phase === 'night' && gameState.role === 'Mafia' && <MafiaVoting />}
-                      {console.log(`MafiaVoting rendered: Phase is 'night' (${gameState.phase === 'night'}), Role is 'Mafia' (${gameState.role === 'Mafia'})`)}
                   
                       {/* Retain existing components like chat and roles section */}
               <div className={styles['chat-box']}>
