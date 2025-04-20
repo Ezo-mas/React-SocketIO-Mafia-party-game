@@ -8,7 +8,7 @@ import Countdown, { zeroPad } from 'react-countdown';
 const LobbyPage = () => {
 
   // Dev mode
-  const [devMode, setDevMode] = useState(true);
+  const [devMode, setDevMode] = useState(false);
 
   // Router hooks
   const { roomId } = useParams();
