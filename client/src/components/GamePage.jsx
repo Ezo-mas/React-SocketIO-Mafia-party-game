@@ -148,6 +148,27 @@ const GamePage = () => {
 
     const handleGameStateUpdate = (updatedState) => {
       console.log("Received game state update:", updatedState);
+
+        // Log the players specifically to debug the isAlive status
+        if (updatedState.players) {
+          console.log("Updated player statuses:", 
+            updatedState.players.map(p => `${p.username}: ${p.isAlive ? 'Alive' : 'Dead'}`));
+        }
+        
+        // Make sure we're replacing the entire players array, not just merging properties
+        if (updatedState.players) {
+          setGameState(prevState => ({
+            ...prevState,
+            ...updatedState,
+            players: updatedState.players // Explicitly replace the players array
+          }));
+        } else {
+          setGameState(prevState => ({
+            ...prevState,
+            ...updatedState
+          }));
+        }
+
       setGameState(prevState => ({
         ...prevState,
         ...updatedState
@@ -228,7 +249,9 @@ const GamePage = () => {
         setTimeout(() => {
           setGameState(prevState => ({
             ...prevState,
-            phase: data.phase
+            phase: data.phase,
+            // Add this to update player statuses:
+            players: data.players ? data.players : prevState.players
           }));
           setIsPhaseTransitioning(false);
           setTransitionPhase(null);
@@ -237,6 +260,7 @@ const GamePage = () => {
     };
 
     const handleGameStarted = (newGameState) => {
+      console.log("Game started event received"); // Debugging log
       console.log("Game started with state:", newGameState);
       GameStorage.setGamePhase(newGameState.phase);
       
@@ -251,6 +275,8 @@ const GamePage = () => {
         gameSettings.nightDuration;
       }
     
+
+      console.log("Setting game flow to 'loading'"); //debugging
       setGameFlow('loading');
       setShowGameScreen(false);
       
@@ -290,6 +316,29 @@ const GamePage = () => {
       socket.off('game_state_update', handleGameStateUpdate);
     };
   }, [roomId, username, gameSettings, gameFlow]);
+
+  //temp location, idk where to put this yet
+    useEffect(() => {
+      const handleDayPhaseStart = ({ killedPlayer, players }) => {
+        console.log(`Day phase started. Killed player: ${killedPlayer}`);
+        setGameState(prevState => ({
+          ...prevState,
+          players,
+        }));
+    
+        if (killedPlayer) {
+          alert(`${killedPlayer} was killed during the night.`);
+        }
+    
+        setGameFlow('playing'); // Transition to the playing state
+      };
+    
+      socket.on('day_phase_start', handleDayPhaseStart);
+    
+      return () => {
+        socket.off('day_phase_start', handleDayPhaseStart);
+      };
+    }, []);
 
   // ===== EVENT HANDLERS =====
   // Chat message sending
@@ -358,6 +407,36 @@ const GamePage = () => {
     );
   };
 
+    // Mafia voting UI
+  const MafiaVoting = () => {
+    if (gameState.phase !== 'night' || gameState.role !== 'Mafia') {
+      console.log(`Phase: ${gameState.phase}, Role: ${gameState.role}`);
+      return null;
+    }
+
+    const handleVote = (targetUsername) => {
+      socket.emit('mafia_vote', { roomId, targetUsername });
+      console.log(`Voted for ${targetUsername}`);
+    };
+
+    return (
+      <div className={styles.voteContainer}>
+        <h3>Vote to Eliminate</h3>
+        <ul>
+          {gameState.players
+            .filter(player => player.isAlive && player.role !== 'Mafia')
+            .map(player => (
+              <li key={player.username}>
+                <button onClick={() => handleVote(player.username)}>
+                  {player.username}
+                </button>
+              </li>
+            ))}
+        </ul>
+      </div>
+    );
+  };
+
   // ===== RENDER LOGIC =====
   // Phase transitions have highest priority
   if (isPhaseTransitioning) {
@@ -416,73 +495,69 @@ const GamePage = () => {
         </div>
       );
       
-    case 'playing':
-      return (
-        <div className={styles.gameContainer}>
-          <div>
-            <div className={styles.header}>
-              {/* Remove the "Mafia Game" h1 element and center phase info */}
-              <div className={styles.centeredPhaseInfo}>
-                <h2>{gameState.phase === 'day' ? 'Day Phase' : 'Night Phase'}</h2>
-                <div className={styles.timer}>
-                  {Math.floor(gameState.phaseTime / 60)}:{String(gameState.phaseTime % 60).padStart(2, '0')}
+      case 'playing':
+        return (
+          <div className={styles.gameContainer}>
+            <div>
+              <div className={styles.header}>
+                <div className={styles.centeredPhaseInfo}>
+                  <h2>{gameState.phase === 'day' ? 'Day Phase' : 'Night Phase'}</h2>
+                  <div className={styles.timer}>
+                    {Math.floor(gameState.phaseTime / 60)}:{String(gameState.phaseTime % 60).padStart(2, '0')}
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className={styles.roleInfo}>
-              <h3>Your Role: {gameState.role}</h3>
-              <p>Status: {gameState.isAlive ? 'Alive' : 'Dead'}</p>
-            </div>
-    
-            <div className={styles.mainContent}>
-              <div className={styles.playerGrid}>
-                {gameState.players.map((player, index) => (
-                  <div
-                    key={index}
-                    className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
-                  >
-                    <div className={styles.playerName}>
-                      {player.username}
+      
+              <div className={styles.roleInfo}>
+                <h3>Your Role: {gameState.role}</h3>
+                <p>Status: {gameState.isAlive ? 'Alive' : 'Dead'}</p>
+              </div>
+      
+              <div className={styles.mainContent}>
+                <div className={styles.playerGrid}>
+                  {gameState.players.map((player, index) => (
+                    <div
+                      key={index}
+                      className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
+                    >
+                      <div className={styles.playerName}>
+                        {player.username} 
+                      </div>
+                      <div className={styles.playerStatus}>
+                        {player.isAlive ? 'Alive' : 'Dead'}
+                      </div>
                     </div>
-                    <div className={styles.playerStatus}>
-                      {player.isAlive ? 'Alive' : 'Dead'}
+                  ))}
+                </div>
+              </div>
+      
+                      {gameState.phase === 'night' && gameState.role === 'Mafia' && <MafiaVoting />}
+                  
+                      {/* Retain existing components like chat and roles section */}
+              <div className={styles['chat-box']}>
+                <div className={styles['chat-messages-container']}>
+                  {messages.map((msg, index) => (
+                    <div key={index} className={styles['chat-message']}>
+                      {msg.username}: {msg.message}
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className={styles['chat-input']}>
+                  <input
+                    className={styles['chat-input-text']}
+                    type="text"
+                    placeholder="Type your message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  />
+                  <button type="submit" onClick={sendMessage}>Send</button>
+                </div>
               </div>
+              <RolesSection />
             </div>
-    
-            <div className={styles.actionArea}>
-              <h3>Game Actions</h3>
-              <p>Game implementation coming soon...</p>
-            </div>
-
-
-            <div className={styles['chat-box']}>
-              <div className={styles['chat-messages-container']}>
-                {messages.map((msg, index) => (
-                  <div key={index} className={styles['chat-message']}>
-                    {msg.username}: {msg.message}
-                  </div>
-                ))}
-              </div>
-              <div className={styles['chat-input']}>
-                <input
-                  className={styles['chat-input-text']}
-                  type="text"
-                  placeholder="Type your message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                />
-                <button type="submit" onClick={sendMessage}>Send</button>
-              </div>
-            </div>
-            <RolesSection />
           </div>
-        </div>
-      );
+        );
       
     default:
       return (

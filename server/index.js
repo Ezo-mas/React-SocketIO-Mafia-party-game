@@ -35,6 +35,8 @@ const roomKickedPlayers = {};
 const lastBroadcastTime = {};
 const emptyGameRooms = {};
 const timeouts = new Map();
+// Store votes for each room
+const mafiaVotes = {};
 
 // ==============================
 // Helper Functions
@@ -88,6 +90,78 @@ function clearManagedTimeout(id) {
   return false;
 }
 
+// Process votes at the end of the night phase
+function processMafiaVotes(roomId) {
+  console.log(`[DEBUG] processMafiaVotes called for room ${roomId}`);
+  const room = rooms[roomId];
+  
+  if (!room) {
+    console.log(`[DEBUG] Room ${roomId} not found`);
+    return null;
+  }
+  
+  if (!mafiaVotes[roomId]) {
+    console.log(`[DEBUG] No mafiaVotes for room ${roomId}`);
+    return null;
+  }
+  
+  if (Object.keys(mafiaVotes[roomId]).length === 0) {
+    console.log(`[DEBUG] mafiaVotes object is empty for room ${roomId}`);
+    delete mafiaVotes[roomId];
+    return null;
+  }
+
+  console.log(`[DEBUG] Processing votes:`, mafiaVotes[roomId]);
+  
+  // First ensure all players have isAlive property set to true by default
+  room.players.forEach(player => {
+    if (player.isAlive === undefined) {
+      player.isAlive = true;
+    }
+  });
+
+  const voteCounts = {};
+  Object.values(mafiaVotes[roomId]).forEach((vote) => {
+    voteCounts[vote] = (voteCounts[vote] || 0) + 1;
+  });
+  
+  console.log(`[DEBUG] Vote counts:`, voteCounts);
+
+  // Only proceed if there are votes
+  if (Object.keys(voteCounts).length === 0) {
+    console.log(`[DEBUG] No vote counts calculated`);
+    delete mafiaVotes[roomId];
+    return null;
+  }
+
+  // Determine the player with the most votes
+  const targetUsername = Object.keys(voteCounts).reduce((a, b) =>
+    voteCounts[a] > voteCounts[b] ? a : b
+  );
+  
+  console.log(`[DEBUG] Selected target: ${targetUsername}`);
+
+  // Mark ONLY the target as dead
+  const targetPlayer = room.players.find(p => p.username === targetUsername);
+  if (targetPlayer) {
+    console.log(`[DEBUG] Found target player:`, targetPlayer);
+    // Verify player is alive before changing status
+    if (targetPlayer.isAlive !== false) {
+      targetPlayer.isAlive = false;
+      console.log(`Mafia killed ${targetUsername}`);
+    } else {
+      console.log(`[DEBUG] Target ${targetUsername} was already dead`);
+    }
+  } else {
+    console.log(`[DEBUG] Could not find player with username ${targetUsername}`);
+  }
+
+  // Clear votes for the next night
+  delete mafiaVotes[roomId];
+
+  return targetUsername; // Return the killed player's username
+}
+
 function startPhaseTimer(roomId) {
   const room = rooms[roomId];
   if (!room) return;
@@ -125,17 +199,63 @@ function startPhaseTimer(roomId) {
       
       // Toggle phase
       const nextPhase = currentPhase === 'day' ? 'night' : 'day';
-      
-      // Update the game state
-      room.gameState = {
-        ...room.gameState,
-        phase: nextPhase,
-        transitioning: true
-      };
+
+      if (currentPhase === 'night') {
+        console.log(`[DEBUG] Phase is night, processing votes for room ${roomId}`);
+        console.log(`[DEBUG] mafiaVotes for room:`, mafiaVotes[roomId] || "No votes");
+        
+        console.log("Current player statuses before vote processing:", 
+          room.players.map(p => ({ username: p.username, isAlive: p.isAlive })));
+          
+        // Process Mafia votes at the end of the night phase
+        const killedPlayer = processMafiaVotes(roomId);
+        
+        console.log(`[DEBUG] processMafiaVotes returned: ${killedPlayer}`);
+        console.log("Player statuses after vote processing:", 
+          room.players.map(p => ({ username: p.username, isAlive: p.isAlive })));
+
+        if (killedPlayer) {
+          console.log(`Night phase ended for room ${roomId}. Mafia killed: ${killedPlayer}`);
+          
+          // Update the game state WITHOUT creating new players - use existing ones with updated status
+          room.gameState = {
+            ...room.gameState,
+            players: room.players.map(player => ({
+              username: player.username,
+              isAlive: player.isAlive  // Preserve existing isAlive status
+            })),
+            phase: nextPhase,
+            transitioning: true
+          };
+        } else {
+          // Even when no one is killed, preserve existing alive/dead status
+          room.gameState = {
+            ...room.gameState,
+            players: room.players.map(player => ({
+              username: player.username,
+              isAlive: player.isAlive  // Preserve existing isAlive status
+            })),
+            phase: nextPhase,
+            transitioning: true
+          };
+        }
+      } else {
+        // Day to night transition - still preserve existing status
+        room.gameState = {
+          ...room.gameState,
+          players: room.players.map(player => ({
+            username: player.username,
+            isAlive: player.isAlive  // Preserve existing isAlive status
+          })),
+          phase: nextPhase,
+          transitioning: true
+        };
+      }
       
       // Send phase transition event to clients
       io.to(roomId).emit('phase_change', {
-        phase: nextPhase
+        phase: nextPhase,
+        players: room.gameState.players // Make sure this includes all players with correct isAlive values
       });
       
       // Start the next phase timer after a delay using managed timeout
@@ -503,9 +623,12 @@ io.on('connection', (socket) => {
         socket.emit('game_state_update', {
           phase: room.gameState.phase,
           phaseTime: room.gameState.phaseTime || room.settings.nightDuration,
-          players: room.players.map(p => ({ username: p.username, isAlive: true })),
+          players: room.players.map(p => ({ 
+            username: p.username, 
+            isAlive: p.isAlive === false ? false : true // Fix to preserve dead status
+          })),
           role: player.role || 'waiting',
-          isAlive: true
+          isAlive: player.isAlive !== false
         });
       }
     }
@@ -824,10 +947,14 @@ socket.on('start_game', (roomId, gameSettings, devMode) => {
     transitioning: true,
     phase: 'night',
     phaseTime: room.settings.nightDuration,
-    players: room.players.map(player => ({
-      username: player.username,
-      isAlive: true
-    })),
+    players: room.players.map(player => {
+      // Explicitly initialize each player as alive in the player object itself
+      player.isAlive = true;
+      return {
+        username: player.username,
+        isAlive: true
+      };
+    }),
     settings: room.settings
   };
 
@@ -839,9 +966,20 @@ socket.on('start_game', (roomId, gameSettings, devMode) => {
     }
   });
 
+  // // Assign roles to players
+  // const playersWithRoles = assignRolesToPlayers(roomId); //need to move this around to fix sync issues with decision making phase
+
   // Send initial game state to all clients
+  console.log(`Emitting game_started event for room ${roomId} with state:`, initialState);
   io.to(roomId).emit('game_started', initialState);
 
+
+  //THIS FIXES MAFIA VOTE SCREEN BUT IS VERY SPAGHETTI :(
+  //testing early initialization of game state
+  if (!rooms[roomId].gameState) {
+    rooms[roomId].gameState = initialState;
+  }
+  
   // Set a clear end for the gameStarting state - exactly 10 seconds
   setManagedTimeout(`game_starting_${roomId}`, () => {
     if (rooms[roomId]) {
@@ -891,6 +1029,86 @@ socket.on('start_game', (roomId, gameSettings, devMode) => {
   }, 1000);
 });
 
+// Handle Mafia voting
+socket.on('mafia_vote', ({ roomId, targetUsername }) => {
+  console.log(`[DEBUG] Received mafia_vote event: ${socket.id} voting for ${targetUsername} in room ${roomId}`);
+  
+  const room = rooms[roomId];
+  if (!room) {
+    console.log(`[DEBUG] Room ${roomId} not found for mafia_vote`);
+    return;
+  }
+
+  const player = room.players.find(p => p.id === socket.id);
+  if (!player) {
+    console.log(`[DEBUG] Player not found for socket ${socket.id}`);
+    return;
+  }
+  
+  if (player.role !== 'Mafia') {
+    console.log(`[DEBUG] Player ${player.username} is not Mafia (role: ${player.role}), cannot vote`);
+    return;
+  }
+
+  // Initialize mafiaVotes for this room if it doesn't exist
+  if (!mafiaVotes[roomId]) {
+    mafiaVotes[roomId] = {};
+  }
+
+  mafiaVotes[roomId][socket.id] = targetUsername; // Store the vote
+  console.log(`Mafia vote: ${player.username} voted for ${targetUsername}`);
+  console.log(`[DEBUG] Current votes in room ${roomId}:`, mafiaVotes[roomId]);
+});
+
+// // Process votes at the end of the night phase
+// function processMafiaVotes(roomId) {
+//   const room = rooms[roomId];
+//   if (!room || !mafiaVotes[roomId]) return null;
+
+//   const voteCounts = {};
+//   Object.values(mafiaVotes[roomId]).forEach((vote) => {
+//     voteCounts[vote] = (voteCounts[vote] || 0) + 1;
+//   });
+
+//   // Determine the player with the most votes
+//   const targetUsername = Object.keys(voteCounts).reduce((a, b) =>
+//     voteCounts[a] > voteCounts[b] ? a : b
+//   );
+
+//   // Mark the target as dead
+//   const targetPlayer = room.players.find(p => p.username === targetUsername);
+//   if (targetPlayer) {
+//     targetPlayer.isAlive = false;
+//     console.log(`Mafia killed ${targetUsername}`);
+//   }
+
+//   // Clear votes for the next night
+//   delete mafiaVotes[roomId];
+
+//   return targetUsername; // Return the killed player's username
+// }
+
+// // Transition to the day phase
+// function startDayPhase(roomId) {
+//   const room = rooms[roomId];
+//   if (!room) return;
+
+//   const killedPlayer = processMafiaVotes(roomId);
+
+//   // Notify all players about the killed player
+//   io.to(roomId).emit('day_phase_start', {
+//     killedPlayer: killedPlayer || null,
+//     players: room.players.map(p => ({
+//       username: p.username,
+//       isAlive: p.isAlive,
+//     })),
+//   });
+
+//   // Update the game state
+//   room.gameState.phase = 'day';
+//   room.gameState.transitioning = false;
+// }
+
   /**
    * Handle player joining a game in progress
    */
@@ -937,10 +1155,10 @@ socket.on('start_game', (roomId, gameSettings, devMode) => {
         phaseTime: room.gameState.phaseTime || room.settings.nightDuration,
         players: room.players.map(player => ({ 
           username: player.username, 
-          isAlive: true 
+          isAlive: player.isAlive === false ? false : true  // Default to true unless explicitly false
         })),
         role: currentRole,
-        isAlive: true,
+        isAlive: existingPlayer.isAlive === false ? false : true, // Default to true unless explicitly false
       });
     } else {
       // Handle case when game hasn't started yet
