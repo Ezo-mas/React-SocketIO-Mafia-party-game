@@ -667,3 +667,18 @@
     align-items: center;
     z-index: 1000;
   }
+
+  .instructionsButton {
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 20px; /* Padidinkite reikšmę, kad mygtukas būtų apvalesnis */
+    margin-top: 10px;
+}
+
+.instructionsButton:hover {
+    transform: translateY(-3px); 
+}

@@ -370,7 +370,7 @@ const GamePage = () => {
           <h3>{role.name}</h3>
           <p className={styles.alignment}>{role.alignment}</p>
           <div>
-           <img className={styles.roleImage} src={'../' + role.name + '.png'} alt={role.name} />
+            <img className={styles.roleImage} src={'../' + role.name + '.png'} alt={role.name} />
           </div>
           <p>{role.description}</p>
           <button onClick={onClose} className={styles.closeButton}>Close</button>
@@ -379,8 +379,40 @@ const GamePage = () => {
     );
   };
 
-   // Roles section component
-   const RolesSection = () => {
+  // Instructions for the game
+  const Instructions = ({ instructions, onClose }) => {
+    if (!instructions) return null;
+
+    return (
+      <div className={styles.roleInfoModal}>
+        <div className={styles.roleInfoContent}>
+          <h3>{instructions.name}</h3>
+          <p>{instructions.description}</p>
+          <br />
+          <p>{instructions.day}</p>
+          <br />
+          <p>{instructions.night}</p>
+          <button onClick={onClose} className={styles.closeButton}>Close</button>
+        </div>
+      </div>
+    );
+  };
+
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  const gameInstructions = {
+    name: "Mafia Game – Quick Rules",
+    description:
+      "Each player is secretly assigned a role: either Mafia or Town. The Mafia work together to eliminate others, while the Town tries to identify and vote out the Mafia.",
+    day:
+      "When day breaks, the players discuss and accuse each other. Everyone votes, and the player with the most votes is eliminated. Choose wisely—every vote counts.",
+    night:
+      "As night falls, the Mafia secretly select someone to eliminate. Meanwhile, the Doctor chooses one player to protect, and the Detective investigates one player’s role. All night actions happen in secret and are revealed when the sun rises.",
+  };
+  
+
+  // Roles section component
+  const RolesSection = () => {
     return (
       <div className={styles.rolesSection}>
         <h3>Game Roles</h3>
@@ -403,9 +435,23 @@ const GamePage = () => {
             onClose={handleCloseRoleInfo}
           />
         )}
+        {showInstructions && (
+          <Instructions
+            instructions={gameInstructions}
+            onClose={() => setShowInstructions(false)}
+          />
+        )}
+        {/* Add green button for instructions */}
+        <button
+          className={styles.instructionsButton}
+          onClick={() => setShowInstructions(true)}
+        >
+          Show Instructions
+        </button>
       </div>
     );
   };
+
 
     // Mafia voting UI
   const MafiaVoting = () => {
