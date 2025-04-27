@@ -452,22 +452,32 @@ const GamePage = () => {
     );
   };
 
-
     // Mafia voting UI
   const MafiaVoting = () => {
+
+    const [playpause, setPlaypause] = useState(false);
+
+
     if (gameState.phase !== 'night' || gameState.role !== 'Mafia') {
       console.log(`Phase: ${gameState.phase}, Role: ${gameState.role}`);
       return null;
     }
+    
+    
 
     const handleVote = (targetUsername) => {
       socket.emit('mafia_vote', { roomId, targetUsername });
       console.log(`Voted for ${targetUsername}`);
+      setPlaypause(!playpause);
     };
 
     return (
       <div className={styles.voteContainer}>
         <h3>Vote to Eliminate</h3>
+        <ReactHowler
+            src='../mygtukas.mp3'
+            playing={playpause}
+          />
         <ul>
           {gameState.players
             .filter(player => player.isAlive && player.role !== 'Mafia')
@@ -495,7 +505,13 @@ const GamePage = () => {
     return (
       <div className={transitionContainerClass.trim()}>
         <div className={styles.spinner}>
-          <div className={styles.sun}></div>
+        <ReactHowler
+            src= {((transitionPhase === 'day') ? '../rooster.mp3' : '../crickets.mp3')}
+            playing={true}
+            volume={0.5}
+          />
+          <div className={styles.sun}>
+          </div>
           <div className={styles.moon}></div>
         </div>
         <div className={styles.stars}></div>
