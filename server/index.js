@@ -27,6 +27,7 @@ const io = new Server(server, {
  * - roomTimers: Stores timer information for each room
  * - roomKickedPlayers: Tracks recently kicked players with timestamps
  * - lastBroadcastTime: Tracks when last notified all players in lobby
+ * - nightActions: Tracks actions like detective investigations per night
  */
 const rooms = {};
 const roomHosts = new Map();
@@ -35,8 +36,9 @@ const roomKickedPlayers = {};
 const lastBroadcastTime = {};
 const emptyGameRooms = {};
 const timeouts = new Map();
-// Store votes for each room
+// Store votes and actions for each room
 const mafiaVotes = {};
+const nightActions = {};
 
 // ==============================
 // Helper Functions
@@ -200,8 +202,14 @@ function startPhaseTimer(roomId) {
       // Toggle phase
       const nextPhase = currentPhase === 'day' ? 'night' : 'day';
 
+      // Clear night actions when night ends (transitioning to day)
       if (currentPhase === 'night') {
-        console.log(`[DEBUG] Phase is night, processing votes for room ${roomId}`);
+        console.log(`[DEBUG] Night ended for room ${roomId}. Clearing night actions.`);
+        if (nightActions[roomId]) {
+          delete nightActions[roomId]; // Clear actions for the ended night
+        }
+
+        console.log(`[DEBUG] Processing votes for room ${roomId}`);
         console.log(`[DEBUG] mafiaVotes for room:`, mafiaVotes[roomId] || "No votes");
         
         console.log("Current player statuses before vote processing:", 
@@ -1059,6 +1067,60 @@ socket.on('mafia_vote', ({ roomId, targetUsername }) => {
   console.log(`Mafia vote: ${player.username} voted for ${targetUsername}`);
   console.log(`[DEBUG] Current votes in room ${roomId}:`, mafiaVotes[roomId]);
 });
+
+// Handle Detective investigation
+socket.on('detective_investigate', ({ roomId, targetUsername }) => {
+  console.log(`[DEBUG] Received detective_investigate: ${socket.id} investigating ${targetUsername} in room ${roomId}`);
+
+  const room = rooms[roomId];
+  if (!room || !room.gameState || room.gameState.phase !== 'night') {
+    console.log(`[DEBUG] Invalid state for detective action in room ${roomId}`);
+    return; // Ignore if not night phase or room/game doesn't exist
+  }
+
+  const investigator = room.players.find(p => p.id === socket.id);
+  if (!investigator || investigator.role !== 'Detective' || !investigator.isAlive) {
+    console.log(`[DEBUG] Invalid investigator: ${investigator?.username} (Role: ${investigator?.role}, Alive: ${investigator?.isAlive})`);
+    return; // Ignore if sender is not the Detective or not alive
+  }
+
+  const targetPlayer = room.players.find(p => p.username === targetUsername);
+  if (!targetPlayer) {
+    console.log(`[DEBUG] Target player ${targetUsername} not found in room ${roomId}`);
+    return; // Ignore if target not found
+  }
+
+  // Cannot investigate dead players or self
+  if (!targetPlayer.isAlive || targetPlayer.id === socket.id) {
+     console.log(`[DEBUG] Target player ${targetUsername} is not alive or is self.`);
+     // Optionally send an error back, but for now just ignore
+     return;
+  }
+
+  // Determine if the target is Mafia
+  const isMafia = targetPlayer.role === 'Mafia';
+
+  // Check if this detective has already acted this night
+  if (nightActions[roomId] && nightActions[roomId][socket.id]) {
+    console.log(`[DEBUG] Detective ${investigator.username} (${socket.id}) already acted this night.`);
+    return;
+  }
+
+  // Record the action
+  if (!nightActions[roomId]) {
+    nightActions[roomId] = {};
+  }
+  nightActions[roomId][socket.id] = 'investigated';
+  console.log(`[DEBUG] Recorded investigation action for ${investigator.username} (${socket.id}) in room ${roomId}`);
+
+  // Send the result back ONLY to the detective who initiated the investigation
+  console.log(`[DEBUG] Sending detective_result to ${investigator.username} (${socket.id}): Target=${targetUsername}, IsMafia=${isMafia}`);
+  io.to(socket.id).emit('detective_result', {
+    target: targetUsername,
+    isMafia: isMafia
+  });
+});
+
 
 // // Process votes at the end of the night phase
 // function processMafiaVotes(roomId) {

@@ -59,6 +59,11 @@ const GamePage = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
 
+  // ===== DETECTIVE STATE =====
+  const [investigationResult, setInvestigationResult] = useState(null); // { target: string, isMafia: boolean }
+  const [showInvestigationPopup, setShowInvestigationPopup] = useState(false);
+  const [hasInvestigatedThisNight, setHasInvestigatedThisNight] = useState(false);
+
   // ===== GAME SETUP EFFECTS =====
   // Apply host settings
   useEffect(() => {
@@ -251,12 +256,19 @@ const GamePage = () => {
             ...prevState,
             phase: data.phase,
             // Add this to update player statuses:
-            players: data.players ? data.players : prevState.players
+            players: data.players ? data.players : prevState.players,
+            phase: data.phase, // Ensure phase is updated here
           }));
           setIsPhaseTransitioning(false);
           setTransitionPhase(null);
-        }, 1000);
-      }, 4000);
+
+          // Reset investigation status at the start of the day phase
+          if (data.phase === 'day') {
+            setHasInvestigatedThisNight(false);
+            console.log("Resetting detective investigation status for day phase.");
+          }
+        }, 1000); // End of inner timeout (fade in)
+      }, 4000); // End of outer timeout (transition display)
     };
 
     const handleGameStarted = (newGameState) => {
@@ -299,6 +311,20 @@ const GamePage = () => {
     socket.on('game_started', handleGameStarted);
     socket.on('game_state_update', handleGameStateUpdate);
 
+    // Detective result listener
+    const handleDetectiveResult = (result) => {
+      console.log("Detective result received:", result);
+      setInvestigationResult(result);
+      setShowInvestigationPopup(true);
+      // Auto-close popup after a few seconds
+      setTimeout(() => {
+        setShowInvestigationPopup(false);
+        setInvestigationResult(null); // Clear result after showing
+      }, 5000); // Show for 5 seconds
+    };
+
+    socket.on('detective_result', handleDetectiveResult);
+
 
     return () => {
       clearTimeout(clearTransitionFlag);
@@ -314,6 +340,7 @@ const GamePage = () => {
       socket.off('phase_timer_update', handlePhaseTimerUpdate);
       socket.off('phase_change', handlePhaseChange);
       socket.off('game_state_update', handleGameStateUpdate);
+      socket.off('detective_result', handleDetectiveResult); // Clean up listener
     };
   }, [roomId, username, gameSettings, gameFlow]);
 
@@ -493,6 +520,73 @@ const GamePage = () => {
     );
   };
 
+  // Detective Action UI
+  const DetectiveAction = () => {
+    const [playpause, setPlaypause] = useState(false); // Sound effect state
+
+    if (gameState.phase !== 'night' || gameState.role !== 'Detective' || !gameState.isAlive) {
+      return null; // Only show for alive Detective during the night
+    }
+
+    const handleInvestigate = (targetUsername) => {
+      if (hasInvestigatedThisNight) {
+        alert("You can only investigate one player per night.");
+        return;
+      }
+      if (targetUsername === username) {
+        alert("You cannot investigate yourself.");
+        return;
+      }
+      socket.emit('detective_investigate', { roomId, targetUsername });
+      console.log(`Detective investigating ${targetUsername}`);
+      setHasInvestigatedThisNight(true); // Mark as investigated for this night
+      setPlaypause(!playpause); // Trigger sound effect
+    };
+
+    return (
+      <div className={styles.voteContainer}> {/* Reusing vote container style */}
+        <h3>Investigate a Player</h3>
+        <ReactHowler
+          src='../mygtukas.mp3' // Reusing button sound
+          playing={playpause}
+        />
+        <ul>
+          {gameState.players
+            .filter(player => player.isAlive && player.username !== username) // Filter alive players, exclude self
+            .map(player => (
+              <li key={player.username}>
+                <button
+                  onClick={() => handleInvestigate(player.username)}
+                  disabled={hasInvestigatedThisNight} // Disable button after investigation
+                >
+                  {player.username}
+                </button>
+              </li>
+            ))}
+        </ul>
+      </div>
+    );
+  };
+
+   // Investigation Result Popup
+   const InvestigationPopup = () => {
+    if (!showInvestigationPopup || !investigationResult) return null;
+
+    return (
+      <div className={styles.roleInfoModal}> {/* Reusing role info modal style */}
+        <div className={styles.roleInfoContent}>
+          <h3>Investigation Result</h3>
+          <p>Player: {investigationResult.target}</p>
+          <p className={investigationResult.isMafia ? styles.mafiaResult : styles.townResult}>
+            {investigationResult.isMafia ? 'MAFIA' : 'NOT MAFIA'}
+          </p>
+          <button onClick={() => setShowInvestigationPopup(false)} className={styles.closeButton}>Close</button>
+        </div>
+      </div>
+    );
+  };
+
+
   // ===== RENDER LOGIC =====
   // Phase transitions have highest priority
   if (isPhaseTransitioning) {
@@ -592,10 +686,11 @@ const GamePage = () => {
                   ))}
                 </div>
               </div>
-      
-                      {gameState.phase === 'night' && gameState.role === 'Mafia' && <MafiaVoting />}
-                  
-                      {/* Retain existing components like chat and roles section */}
+
+                      {gameState.phase === 'night' && gameState.role === 'Mafia' && gameState.isAlive && <MafiaVoting />}
+                      {gameState.phase === 'night' && gameState.role === 'Detective' && gameState.isAlive && <DetectiveAction />}
+                      <InvestigationPopup /> 
+
               <div className={styles['chat-box']}>
                 <div className={styles['chat-messages-container']}>
                   {messages.map((msg, index) => (
