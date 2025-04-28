@@ -37,8 +37,10 @@ const lastBroadcastTime = {};
 const emptyGameRooms = {};
 const timeouts = new Map();
 // Store votes and actions for each room
-const mafiaVotes = {};
-const nightActions = {};
+const mafiaVotes = {}; // { roomId: { voterSocketId: targetUsername } }
+const nightActions = {}; // { roomId: { socketId: actionType } }
+const dayVotesData = {}; // { roomId: { voterSocketId: targetUsername } }
+const dayVoteCounts = {}; // { roomId: { targetUsername: count } }
 
 // ==============================
 // Helper Functions
@@ -164,6 +166,69 @@ function processMafiaVotes(roomId) {
   return targetUsername; // Return the killed player's username
 }
 
+// Process day votes at the end of the day phase
+function processDayVotes(roomId) {
+  console.log(`[DEBUG] processDayVotes called for room ${roomId}`);
+  const room = rooms[roomId];
+  if (!room) return null; 
+
+  const currentVotes = dayVotesData[roomId];
+  if (!currentVotes || Object.keys(currentVotes).length === 0) {
+    console.log(`[DEBUG] No day votes recorded for room ${roomId}`);
+    delete dayVotesData[roomId];
+    delete dayVoteCounts[roomId];
+    return null; 
+  }
+
+  console.log(`[DEBUG] Processing day votes:`, currentVotes);
+
+  // Tally votes
+  const voteCounts = {};
+  Object.values(currentVotes).forEach(targetUsername => {
+    voteCounts[targetUsername] = (voteCounts[targetUsername] || 0) + 1;
+  });
+  console.log(`[DEBUG] Day vote counts:`, voteCounts);
+
+  // Find the maximum vote count
+  let maxVotes = 0;
+  for (const count of Object.values(voteCounts)) {
+    if (count > maxVotes) {
+      maxVotes = count;
+    }
+  }
+
+  // Find all players who received the maximum number of votes
+  const playersWithMaxVotes = Object.keys(voteCounts).filter(
+    username => voteCounts[username] === maxVotes
+  );
+
+  let eliminatedPlayer = null;
+  if (playersWithMaxVotes.length === 1) {
+    eliminatedPlayer = playersWithMaxVotes[0];
+    console.log(`[DEBUG] Player to be eliminated by day vote: ${eliminatedPlayer}`);
+
+    // Mark the player as dead
+    const targetPlayer = room.players.find(p => p.username === eliminatedPlayer);
+    if (targetPlayer && targetPlayer.isAlive) {
+      targetPlayer.isAlive = false;
+      console.log(`Player ${eliminatedPlayer} was eliminated by day vote.`);
+    } else {
+      console.log(`[DEBUG] Could not find or player ${eliminatedPlayer} already dead.`);
+      eliminatedPlayer = null; // Don't report elimination if already dead
+    }
+  } else {
+    console.log(`[DEBUG] Day vote resulted in a tie (${playersWithMaxVotes.join(', ')}). No one is eliminated.`);
+    // In case of a tie, no one is eliminated
+  }
+
+  // Clear votes for the next day
+  delete dayVotesData[roomId];
+  delete dayVoteCounts[roomId];
+
+  return eliminatedPlayer; // Return username of eliminated player or null
+}
+
+
 function startPhaseTimer(roomId) {
   const room = rooms[roomId];
   if (!room) return;
@@ -201,6 +266,7 @@ function startPhaseTimer(roomId) {
       
       // Toggle phase
       const nextPhase = currentPhase === 'day' ? 'night' : 'day';
+      let eliminatedPlayer = null; // Declare eliminatedPlayer here
 
       // Clear night actions when night ends (transitioning to day)
       if (currentPhase === 'night') {
@@ -247,8 +313,18 @@ function startPhaseTimer(roomId) {
             transitioning: true
           };
         }
-      } else {
-        // Day to night transition - still preserve existing status
+      } else { // currentPhase is 'day'
+        console.log(`[DEBUG] Day ended for room ${roomId}. Processing day votes.`);
+        eliminatedPlayer = processDayVotes(roomId); // Assign to the higher-scoped variable
+
+        if (eliminatedPlayer) {
+          console.log(`Day phase ended for room ${roomId}. Player eliminated: ${eliminatedPlayer}`);
+          // Announce elimination? Maybe later.
+        } else {
+           console.log(`Day phase ended for room ${roomId}. No one eliminated by vote.`);
+        }
+
+        // Update game state for day->night transition, preserving player statuses
         room.gameState = {
           ...room.gameState,
           players: room.players.map(player => ({
@@ -259,7 +335,17 @@ function startPhaseTimer(roomId) {
           transitioning: true
         };
       }
-      
+
+      // Announce day vote result *before* phase change event if someone was eliminated
+      console.log(`[DEBUG] Checking day vote result before emit: currentPhase=${currentPhase}, eliminatedPlayer=${eliminatedPlayer}, typeof=${typeof eliminatedPlayer}`); // DEBUG LOG
+      if (currentPhase === 'day' && eliminatedPlayer) {
+         io.to(roomId).emit('day_vote_result', { eliminatedPlayer });
+         // Add a small delay before phase change to allow clients to process the result? Optional.
+      } else if (currentPhase === 'day' && !eliminatedPlayer) {
+         io.to(roomId).emit('day_vote_result', { eliminatedPlayer: null }); // Indicate a tie or no votes
+      }
+
+
       // Send phase transition event to clients
       io.to(roomId).emit('phase_change', {
         phase: nextPhase,
@@ -1119,6 +1205,53 @@ socket.on('detective_investigate', ({ roomId, targetUsername }) => {
     target: targetUsername,
     isMafia: isMafia
   });
+});
+
+// Handle Day Voting
+socket.on('day_vote', ({ roomId, targetUsername }) => {
+  console.log(`[DEBUG] Received day_vote: ${socket.id} voting for ${targetUsername} in room ${roomId}`);
+
+  const room = rooms[roomId];
+  // Basic validation
+  if (!room || !room.gameState || room.gameState.phase !== 'day') {
+    console.log(`[DEBUG] Invalid state for day vote in room ${roomId}`);
+    return;
+  }
+
+  const voter = room.players.find(p => p.id === socket.id);
+  if (!voter || !voter.isAlive) {
+    console.log(`[DEBUG] Invalid voter (not found or dead): ${socket.id}`);
+    return;
+  }
+
+  const target = room.players.find(p => p.username === targetUsername);
+  if (!target || !target.isAlive) {
+     console.log(`[DEBUG] Invalid vote target (not found or dead): ${targetUsername}`);
+     return;
+  }
+
+  // Initialize vote storage if needed
+  if (!dayVotesData[roomId]) {
+    dayVotesData[roomId] = {};
+  }
+  if (!dayVoteCounts[roomId]) {
+    dayVoteCounts[roomId] = {};
+  }
+
+  // Record the vote (overwrite previous vote if any)
+  dayVotesData[roomId][socket.id] = targetUsername;
+  console.log(`[DEBUG] Recorded day vote: ${voter.username} -> ${targetUsername}`);
+
+  // Recalculate vote counts
+  const currentVoteCounts = {};
+  Object.values(dayVotesData[roomId]).forEach(target => {
+    currentVoteCounts[target] = (currentVoteCounts[target] || 0) + 1;
+  });
+  dayVoteCounts[roomId] = currentVoteCounts; // Update the stored counts
+
+  // Broadcast the updated vote counts to everyone in the room
+  console.log(`[DEBUG] Broadcasting day_vote_update to room ${roomId}:`, dayVoteCounts[roomId]);
+  io.to(roomId).emit('day_vote_update', dayVoteCounts[roomId]);
 });
 
 

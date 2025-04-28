@@ -64,6 +64,12 @@ const GamePage = () => {
   const [showInvestigationPopup, setShowInvestigationPopup] = useState(false);
   const [hasInvestigatedThisNight, setHasInvestigatedThisNight] = useState(false);
 
+  // ===== DAY VOTING STATE =====
+  const [showVotingPopup, setShowVotingPopup] = useState(false);
+  const [dayVotes, setDayVotes] = useState({}); // { username: count }
+  const [hasVotedThisDay, setHasVotedThisDay] = useState(false);
+  const [votedFor, setVotedFor] = useState(null); // Track who the current player voted for
+
   // ===== GAME SETUP EFFECTS =====
   // Apply host settings
   useEffect(() => {
@@ -267,6 +273,13 @@ const GamePage = () => {
             setHasInvestigatedThisNight(false);
             console.log("Resetting detective investigation status for day phase.");
           }
+          // Reset day voting status at the start of the night phase
+          if (data.phase === 'night') {
+            setHasVotedThisDay(false);
+            setVotedFor(null);
+            setDayVotes({}); // Clear votes visually
+            console.log("Resetting day voting status for night phase.");
+          }
         }, 1000); // End of inner timeout (fade in)
       }, 4000); // End of outer timeout (transition display)
     };
@@ -325,6 +338,28 @@ const GamePage = () => {
 
     socket.on('detective_result', handleDetectiveResult);
 
+    // Day vote update listener
+    const handleDayVoteUpdate = (updatedVotes) => {
+      console.log("Received day vote update:", updatedVotes);
+      setDayVotes(updatedVotes);
+    };
+    socket.on('day_vote_update', handleDayVoteUpdate);
+
+    // Day vote result listener
+    const handleDayVoteResult = ({ eliminatedPlayer }) => {
+      if (eliminatedPlayer) {
+        alert(`${eliminatedPlayer} was eliminated by the town vote!`);
+        // Update local state if the eliminated player is the current user
+        if (eliminatedPlayer === username) {
+          setGameState(prev => ({ ...prev, isAlive: false }));
+        }
+      } else {
+        alert("The town vote resulted in a tie. No one was eliminated.");
+      }
+      // Player list will update via the subsequent phase_change event from the server
+    };
+    socket.on('day_vote_result', handleDayVoteResult);
+
 
     return () => {
       clearTimeout(clearTransitionFlag);
@@ -340,7 +375,9 @@ const GamePage = () => {
       socket.off('phase_timer_update', handlePhaseTimerUpdate);
       socket.off('phase_change', handlePhaseChange);
       socket.off('game_state_update', handleGameStateUpdate);
-      socket.off('detective_result', handleDetectiveResult); // Clean up listener
+      socket.off('detective_result', handleDetectiveResult);
+      socket.off('day_vote_update', handleDayVoteUpdate);
+      socket.off('day_vote_result', handleDayVoteResult); // Clean up day vote result listener
     };
   }, [roomId, username, gameSettings, gameFlow]);
 
@@ -586,6 +623,58 @@ const GamePage = () => {
     );
   };
 
+  // Day Voting Popup (Truksta dizaino)
+  const DayVotingPopup = ({ onClose }) => {
+    const [voteSound, setVoteSound] = useState(false);
+
+    const handleVote = (targetUsername) => {
+      if (hasVotedThisDay) {
+        alert("You have already voted today.");
+        return;
+      }
+      if (targetUsername === username) {
+        alert("You cannot vote for yourself.");
+        return;
+      }
+
+      socket.emit('day_vote', { roomId, targetUsername });
+      setHasVotedThisDay(true);
+      setVotedFor(targetUsername);
+      setVoteSound(!voteSound); 
+      console.log(`Voted for ${targetUsername}`);
+      // onClose();
+    };
+
+    // Get only alive players for voting
+    const alivePlayers = gameState.players.filter(p => p.isAlive);
+
+    return (
+      <div className={styles.roleInfoModal}>
+        <div className={styles.roleInfoContent}>
+          <h3>Vote to Eliminate</h3>
+          <ReactHowler src='../mygtukas.mp3' playing={voteSound} />
+          <ul className={styles.voteList}> 
+            {alivePlayers.map(player => (
+              <li key={player.username} className={styles.voteListItem}>
+                <span>{player.username} ({dayVotes[player.username] || 0} votes)</span>
+                <button
+                  onClick={() => handleVote(player.username)}
+                  disabled={hasVotedThisDay || player.username === username} // Disable if already voted or self
+                  className={votedFor === player.username ? styles.votedForButton : ''} // Style the button for the voted player
+                >
+                  {votedFor === player.username ? 'Voted' : 'Vote'}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {hasVotedThisDay && <p>You voted for: {votedFor}</p>}
+          {!hasVotedThisDay && <p>You have not voted yet.</p>}
+          <button onClick={onClose} className={styles.closeButton}>Close</button>
+        </div>
+      </div>
+    );
+  };
+
 
   // ===== RENDER LOGIC =====
   // Phase transitions have highest priority
@@ -687,9 +776,26 @@ const GamePage = () => {
                 </div>
               </div>
 
-                      {gameState.phase === 'night' && gameState.role === 'Mafia' && gameState.isAlive && <MafiaVoting />}
-                      {gameState.phase === 'night' && gameState.role === 'Detective' && gameState.isAlive && <DetectiveAction />}
-                      <InvestigationPopup /> 
+                      {/* Action Buttons Container */}
+                      <div className={styles.actionButtonsContainer}>
+                        {/* Day Phase Actions */}
+                        {gameState.phase === 'day' && gameState.isAlive && (
+                          <button
+                            className={styles.voteActionButton} // Add specific style if needed
+                            onClick={() => setShowVotingPopup(true)}
+                          >
+                            Vote
+                          </button>
+                        )}
+                        {/* Night Phase Actions */}
+                        {gameState.phase === 'night' && gameState.role === 'Mafia' && gameState.isAlive && <MafiaVoting />}
+                        {gameState.phase === 'night' && gameState.role === 'Detective' && gameState.isAlive && <DetectiveAction />}
+                      </div>
+
+                      {/* Popups */}
+                      <InvestigationPopup />
+                      {showVotingPopup && <DayVotingPopup onClose={() => setShowVotingPopup(false)} />}
+
 
               <div className={styles['chat-box']}>
                 <div className={styles['chat-messages-container']}>
