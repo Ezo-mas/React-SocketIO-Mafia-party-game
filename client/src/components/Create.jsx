@@ -24,7 +24,7 @@ const CreateRoom = () => {
         }
         
         socket.emit('leave_any_previous_games');
-        const newRoomId = uuidv4();
+        const newRoomId = uuidv4().substring(0, 8);
 
         GameStorage.setCreatingRoom(newRoomId);
         addPlayer(hostName);

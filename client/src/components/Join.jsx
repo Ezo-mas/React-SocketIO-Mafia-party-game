@@ -1,16 +1,42 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useContext, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import socket, { leaveGame, GameStorage } from '../services/socket';
 import { LobbyContext } from '../context/LobbyContext';
 import styles from './TitlePage.module.css';
 
 
 const Join = () => {
-    const [name, setName] = useState('');
+    const location = useLocation();
+    const locationState = location.state || {};
+    const [name, setName] = useState(locationState.username || '');
     const [roomId, setRoomId] = useState('');
     const [joinError, setJoinError] = useState('');
     const navigate = useNavigate();
     const { addPlayer } = useContext(LobbyContext);
+    const roomIdInputRef = useRef(null);
+    const nameInputRef = useRef(null);
+    const [isEditingName, setIsEditingName] = useState(!locationState.username);
+
+    const handleChangeName = () => {
+        setIsEditingName(true);
+        setTimeout(() => {
+          if (nameInputRef.current) {
+            nameInputRef.current.focus();
+          }
+        }, 0);
+    };
+    
+    
+    const handleNameChange = (e) => {
+        setName(e.target.value);
+    };
+
+
+    useEffect(() => {
+        if (locationState.username && roomIdInputRef.current) {
+            roomIdInputRef.current.focus();
+        }
+    }, []);
 
     useEffect(() => {
         const handleRoomLockedError = (lockedRoomId) => {
@@ -34,7 +60,7 @@ const Join = () => {
           socket.off('room_locked_error', handleRoomLockedError);
           socket.off('join_room_success', handleJoinRoomSuccess);
         };
-      }, [navigate, name]);
+      }, [navigate, name]);     
 
     const handleJoinRoom = () => {       
         setJoinError('');
@@ -82,6 +108,17 @@ const Join = () => {
                         </ul>
                         <br />
                         <div className="form-group">
+                        {locationState.comingFromGame && name && !isEditingName ? (
+                            <div className={styles.nameDisplay}>
+                                <span>Playing as: <strong>{name}</strong></span>
+                                <button 
+                                onClick={handleChangeName}
+                                className={styles.editButton}
+                                >
+                                Change
+                                </button>
+                            </div>
+                            ) : (
                             <input
                                 type="text"
                                 id="name"
@@ -89,7 +126,14 @@ const Join = () => {
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 required
+                                ref={nameInputRef}
+                                onBlur={() => {
+                                    if (name.trim()) {
+                                        setIsEditingName(false);
+                                    }
+                                }}
                             />
+                        )}
                         </div>
 
                         <div className="form-group">
@@ -100,6 +144,7 @@ const Join = () => {
                                 value={roomId}
                                 onChange={(e) => setRoomId(e.target.value)}
                                 required
+                                ref={roomIdInputRef}
                             />
                         </div>
 

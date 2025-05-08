@@ -153,6 +153,12 @@ function processMafiaVotes(roomId) {
     if (targetPlayer.isAlive !== false) {
       targetPlayer.isAlive = false;
       console.log(`Mafia killed ${targetUsername}`);
+      
+      // Check if this kill triggered a win condition
+      if (checkWinCondition(roomId)) {
+        delete mafiaVotes[roomId];
+        return null; // Game over, no need to continue
+      }
     } else {
       console.log(`[DEBUG] Target ${targetUsername} was already dead`);
     }
@@ -212,6 +218,33 @@ function processDayVotes(roomId) {
     if (targetPlayer && targetPlayer.isAlive) {
       targetPlayer.isAlive = false;
       console.log(`Player ${eliminatedPlayer} was eliminated by day vote.`);
+      
+      // Check if the eliminated player is a Jester - if so, they win!
+      if (targetPlayer.role === 'Jester') {
+        console.log(`[DEBUG] A Jester (${eliminatedPlayer}) was eliminated by town vote - JESTER WINS!`);
+        
+        // Trigger game over with Jester as winner
+        const winData = {
+          winner: 'jester',
+          jesterName: eliminatedPlayer,
+          playerRoles: room.players.map(player => ({
+            username: player.username,
+            role: player.role,
+            wasAlive: player.isAlive !== false
+          }))
+        };
+        
+        io.to(roomId).emit('game_over', winData);
+        cleanupGameState(roomId);
+        return 'jester_win'; // Special return value to indicate jester win
+      }
+
+      if (checkWinCondition(roomId)) {
+        delete dayVotesData[roomId];
+        delete dayVoteCounts[roomId];
+        return null; // Game ended, no need to continue
+      }
+
     } else {
       console.log(`[DEBUG] Could not find or player ${eliminatedPlayer} already dead.`);
       eliminatedPlayer = null; // Don't report elimination if already dead
@@ -288,6 +321,11 @@ function startPhaseTimer(roomId) {
         console.log("Player statuses after vote processing:", 
         room.players.map(p => ({ username: p.username, isAlive: p.isAlive })));
 
+        // If game ended from the night kill, exit early
+        if (killedPlayer === null && checkWinCondition(roomId)) {
+          return;
+        }
+
           io.to(roomId).emit('day_phase_start', { 
             killedPlayer, 
             players: room.players.map(player => ({
@@ -325,6 +363,16 @@ function startPhaseTimer(roomId) {
         console.log(`[DEBUG] Day ended for room ${roomId}. Processing day votes.`);
         eliminatedPlayer = processDayVotes(roomId); // Assign to the higher-scoped variable
 
+        if (eliminatedPlayer === 'jester_win') {
+          console.log(`[DEBUG] Jester win detected - game over!`);
+          return; // Exit early as game is already over
+        }
+
+        // If game ended from the day vote, exit early
+        if (eliminatedPlayer === null && checkWinCondition(roomId)) {
+          return;
+        }
+
         if (eliminatedPlayer) {
           console.log(`Day phase ended for room ${roomId}. Player eliminated: ${eliminatedPlayer}`);
           // Emit elimination event to all clients
@@ -350,7 +398,6 @@ function startPhaseTimer(roomId) {
       console.log(`[DEBUG] Checking day vote result before emit: currentPhase=${currentPhase}, eliminatedPlayer=${eliminatedPlayer}, typeof=${typeof eliminatedPlayer}`); // DEBUG LOG
       if (currentPhase === 'day' && eliminatedPlayer) {
          //io.to(roomId).emit('day_vote_result', { eliminatedPlayer });
-         // Add a small delay before phase change to allow clients to process the result? Optional.
       } else if (currentPhase === 'day' && !eliminatedPlayer) {
          //io.to(roomId).emit('day_vote_result', { eliminatedPlayer: null }); // Indicate a tie or no votes
       }
@@ -619,6 +666,149 @@ function cleanupRooms(specificRoomId = null, force = false) {
 }
 
 setInterval(() => cleanupRooms(), 60 * 1000);
+
+/**
+ * Clean up game resources when a game ends
+ * @param {string} roomId - The room ID to clean up
+ */
+function cleanupGameState(roomId) {
+  const room = rooms[roomId];
+  if (!room) return;
+  
+  // Clear timers
+  clearInterval(room.phaseTimer);
+  room.phaseTimer = null;
+  
+  // Clear managed timeouts related to this game
+  clearManagedTimeout(`phase_${roomId}`);
+  clearManagedTimeout(`phase_transition_${roomId}`);
+  clearManagedTimeout(`start_phase_${roomId}`);
+  clearManagedTimeout(`game_starting_${roomId}`);
+  clearManagedTimeout(`game_countdown_${roomId}`);
+  
+  // Clear vote and action data
+  delete mafiaVotes[roomId];
+  delete nightActions[roomId]; 
+  delete dayVotesData[roomId];
+  delete dayVoteCounts[roomId];
+  
+  // Set game state to ended but preserve players and roles for the end screen
+  room.gameEnded = true;
+  
+  console.log(`Game in room ${roomId} has ended and resources are cleaned up`);
+}
+
+/**
+ * Check if either the Town, Mafia or Jester has won the game
+ * @param {string} roomId - The ID of the room to check
+ * @returns {boolean} - True if game ended, false if game continues
+ */
+function checkWinCondition(roomId) {
+  const room = rooms[roomId];
+  if (!room) return false;
+
+  // Get alive players only
+  const alivePlayers = room.players.filter(player => player.isAlive !== false);
+  
+  // Count Mafia and Town members
+  let aliveMafiaCount = 0;
+  let aliveTownCount = 0;
+
+  alivePlayers.forEach(player => {
+    if (player.role === 'Mafia') {
+      aliveMafiaCount++;
+    } else  {
+      aliveTownCount++;
+    }
+  });
+
+  console.log(`[WIN CHECK] Room ${roomId}: Mafia=${aliveMafiaCount}, Town=${aliveTownCount}`);
+
+  // Check win conditions
+  let winner = null;
+  
+  // Town wins when all Mafia members are eliminated
+  if (aliveMafiaCount === 0) {
+    winner = 'town';
+    console.log(`[WIN CHECK] Town wins - all Mafia eliminated!`);
+  }
+  // Mafia wins when they equal or outnumber the Town
+  else if (aliveMafiaCount >= aliveTownCount) {
+    winner = 'mafia';
+    console.log(`[WIN CHECK] Mafia wins - they now equal or outnumber the town!`);
+  }
+  
+  // If we have a winner, end the game
+  if (winner) {
+    const winData = {
+      winner: winner,
+      playerRoles: room.players.map(player => ({
+        username: player.username,
+        role: player.role,
+        wasAlive: player.isAlive !== false
+      }))
+    };
+    
+    console.log(`Game over! ${winner.toUpperCase()} wins in room ${roomId}`);
+    io.to(roomId).emit('game_over', winData);
+    
+    // Clean up game resources
+    cleanupGameState(roomId);
+    return true;
+  }
+  
+  return false; // Game continues
+}
+
+/**
+ * Simulates ending the game for testing purposes
+ * @param {string} roomId - The ID of the room to end
+ * @param {string} winner - Who wins: 'town' or 'mafia'
+ */
+function simulateGameEnd(roomId, winner = null) {
+  const room = rooms[roomId];
+  if (!room) return;
+  
+  // If no winner specified, randomly choose one (now including jester)
+  if (!winner) {
+    const randomValue = Math.random();
+    if (randomValue < 0.33) {
+      winner = 'town';
+    } else if (randomValue < 0.67) {
+      winner = 'mafia';
+    } else {
+      winner = 'jester';
+      // For jester win, we need to select a random player to be the jester
+      const randomPlayerIndex = Math.floor(Math.random() * room.players.length);
+      const jesterPlayer = room.players[randomPlayerIndex];
+      jesterPlayer.role = 'Jester'; // Temporarily set this player as Jester for the simulation
+    }
+  }
+  
+  // Prepare win data, including special jester data if needed
+  const winData = {
+    winner: winner,
+    playerRoles: room.players.map(player => ({
+      username: player.username,
+      role: player.role,
+      wasAlive: player.isAlive !== false
+    }))
+  };
+  
+  // If jester win, add jester name to win data
+  if (winner === 'jester') {
+    const jester = room.players.find(p => p.role === 'Jester');
+    if (jester) {
+      winData.jesterName = jester.username;
+    }
+  }
+  
+  console.log(`Simulating game end in room ${roomId}: ${winner.toUpperCase()} wins`);
+  io.to(roomId).emit('game_over', winData);
+  
+  // Clean up game resources
+  cleanupGameState(roomId);
+}
 
 /**
  * Assign random roles to players in a room
@@ -1384,6 +1574,17 @@ socket.on('day_vote', ({ roomId, targetUsername }) => {
     // Mark this socket as transitioning to game in server-side memory
     socket.data.transitioningToGame = roomId;
     console.log(`Player ${socket.id} transitioning to game ${roomId}`);
+  });
+
+  socket.on('dev_simulate_game_end', ({ roomId, winner }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+    
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    
+    console.log(`Dev mode: ${player.username} requested game end simulation`);
+    simulateGameEnd(roomId, winner);
   });
   
   socket.on('leave_game_room', (roomId) => {

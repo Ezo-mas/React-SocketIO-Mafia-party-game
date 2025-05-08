@@ -257,7 +257,7 @@
   }
 
   .neutral {
-    background-color: #f39c12; 
+    background-color: #8e44ad; 
     color: white; 
     }
 
@@ -686,7 +686,7 @@
 /* Base notification style */
 .notification {
   position: fixed;
-  top: 25%; /* Lowered as requested earlier */
+  top: 25%;
   left: 50%;
   transform: translateX(-50%);
   border-radius: 8px;
@@ -702,28 +702,28 @@
 
 /* Town vote elimination notification */
 .townNotification {
-  color: #6bff6b; /* Green text */
+  color: #6bff6b;
   border: 2px solid #6bff6b;
   box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
 }
 
 /* Mafia kill notification */
 .mafiaNotification {
-  color: #ff6b6b; /* Red text */
+  color: #ff6b6b;
   border: 2px solid #ff6b6b;
   box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
 }
 
 /* No elimination notification (town vote tie) */
 .noTownNotification {
-  color: #ffbb6b; /* Orange text */
+  color: #ffbb6b;
   border: 2px solid #ffbb6b;
   box-shadow: 0 0 20px rgba(255, 187, 0, 0.5);
 }
 
 /* No kill notification (mafia didn't kill) */
 .noMafiaNotification {
-  color: #c4a1ff; /* Purple text */
+  color: #c4a1ff;
   border: 2px solid #c4a1ff;
   box-shadow: 0 0 20px rgba(147, 112, 219, 0.5);
 }
@@ -737,3 +737,269 @@
   opacity: 0;
   transform: translateX(-50%) translateY(-20px);
 }
+
+.gameOverContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background-color: rgba(0, 0, 0, 0.9);
+  border-radius: 8px;
+  color: white;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.gameOverHeader {
+  font-size: 36px;
+  margin-bottom: 20px;
+  text-align: center;
+  animation: gameOverFadeIn 1s forwards;
+  will-change: opacity;
+}
+
+@keyframes gameOverFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.playerRolesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.playerRolesGrid h2 {
+  grid-column: 1 / -1;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.deadPlayer {
+  opacity: 0.7;
+}
+
+.playerRoleName {
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 5px;
+}
+
+.playerRoleInfo {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 8px 0;
+  padding: 8px 15px;
+  border-radius: 20px;
+  background-color: #222;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: inline-block;
+  border: 2px solid;
+}
+
+.playerFinalStatus {
+  font-style: italic;
+}
+
+.gameOverButtons {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.gameOverButtons button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.newGameButton, .joinButton {
+  background-color: #b74b4b; 
+  color: white;
+}
+
+.newGameButton:hover, .joinButton:hover {
+  background-color: #9e3e3e;
+  transform: translateY(-2px);
+}
+
+.homeButton {
+  background-color: #555555;
+  color: white;
+}
+
+.homeButton:hover {
+  background-color: #444444; 
+  transform: translateY(-2px);
+}
+
+/* Dev Mode Styles */
+.devModeToggle {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  z-index: 1000;
+}
+
+.devModeToggle button {
+  background-color: #555;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.devModeToggle button:hover {
+  opacity: 1;
+}
+
+.devModePanel {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 1px solid #777;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+}
+
+.devModePanel h4 {
+  color: #ff9800;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.devModeButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.gameOverButton.townWin {
+  background-color: #049c1e;
+  color: white;
+}
+
+.gameOverButton.mafiaWin {
+  background-color: #ad0303;
+  color: white;
+}
+
+.gameOverButton.jesterWin {
+  background-color: #5d0285;
+  color: white;
+}
+
+.roleImageWrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.gameOverRoleImage {
+  width: auto;
+  height: 150px;
+  max-width: 90%;
+  object-fit: contain; 
+  border-radius: 8px;
+  border: 2px solid #555;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+  margin: 5px 0;
+}
+
+.gameOverRoleImage:hover {
+  transform: scale(1.2);
+}
+
+.playerRoleCard {
+  background-color: #333333;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.2s;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.playerRoleCard:hover {
+  transform: scale(1.05);
+}
+
+/* Special role styles */
+.playerRoleCard[data-role="Mafia"] .playerRoleInfo {
+  border-color: #ff4d4d;
+  color: #ff4d4d;
+  text-shadow: 0 0 5px rgba(255, 0, 0, 0.3);
+}
+
+.playerRoleCard[data-role="Jester"] .playerRoleInfo {
+  border-color: #d38aff;
+  color: #d38aff;
+  text-shadow: 0 0 5px rgba(177, 82, 255, 0.3);
+}
+
+.playerRoleCard[data-role="Detective"] .playerRoleInfo {
+  border-color: #70a9ff;
+  color: #70a9ff;
+  text-shadow: 0 0 5px rgba(61, 143, 255, 0.3);
+}
+
+.playerRoleCard[data-role="Doctor"] .playerRoleInfo {
+  border-color: #60e489;
+  color: #60e489;
+  text-shadow: 0 0 5px rgba(75, 183, 110, 0.3);
+}
+
+.playerRoleCard[data-role="Civilian"] .playerRoleInfo {
+  border-color: #ffe066;
+  color: #ffe066;
+  text-shadow: 0 0 5px rgba(255, 212, 59, 0.3);
+}
+
+.playerFinalStatus {
+  font-size: 16px;
+  font-weight: 500;
+  margin-top: 10px;
+  padding: 3px 12px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  border: 1px solid;
+}
+
+/* Survived/died styling */
+.playerFinalStatus.survived {
+  color: #60e489;
+  border-color: #60e489;
+  background-color: rgba(75, 183, 110, 0.1);
+}
+
+.playerFinalStatus.perished {
+  color: #ff7e7e;
+  border-color: #ff7e7e;
+  background-color: rgba(255, 126, 126, 0.1);
+}
+
+.playerRoleName {
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+

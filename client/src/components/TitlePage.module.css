@@ -126,3 +126,35 @@ body {
     overflow-wrap: break-word;
     word-break: break-word;  
 }
+
+.editButton {
+    margin-left: 10px;
+    padding: 2px 8px;
+    font-size: 12px;
+    background-color: #444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .editButton:hover {
+    background-color: #555;
+  }
+
+  .nameDisplay {
+    color: #ddd;
+    padding: 10px;
+    background-color: #333;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .nameDisplay strong {
+    color: #b74b4b;
+    font-weight: bold;
+  }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import ReactHowler from 'react-howler'
 import socket, { GameStorage } from '../services/socket';
 import styles from './GamePage.module.css';
@@ -74,6 +75,20 @@ const GamePage = () => {
   const [eliminationNotification, setEliminationNotification] = useState(null); // { player: string, cause: 'vote' | 'mafia' }
   const [showNotification, setShowNotification] = useState(false);
 
+  // ===== GAME OVER STATE =====
+  const [gameOverData, setGameOverData] = useState({
+    winner: null,  
+    playerRoles: [] // [{username: 'player1', role: 'Mafia', wasAlive: false}, ...]
+  });
+
+  // ===== DEV MODE STATE =====
+  const [devMode, setDevMode] = useState(false); 
+  const [showDevButton, setShowDevButton] = useState(false);
+
+  const toggleDevMode = () => {
+    setDevMode(prev => !prev);
+  };
+
   // ===== GAME SETUP EFFECTS =====
   // Apply host settings
   useEffect(() => {
@@ -134,6 +149,29 @@ const GamePage = () => {
       socket.off('receive_message');
     };
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check for Alt+D keyboard shortcut
+      if (e.altKey && e.key === 'd') {
+        e.preventDefault();
+        setShowDevButton(prev => !prev);
+        
+        
+        if (devMode && showDevButton) {
+          setDevMode(false);
+        }
+      }
+    };
+  
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [devMode, showDevButton]); 
 
   // Main socket event handlers
   useEffect(() => {
@@ -319,6 +357,14 @@ const GamePage = () => {
       }, 1000);
     };
 
+    const handleGameOver = (data) => {
+      console.log("Game over received:", data);
+      setGameOverData(data);
+      setGameFlow('gameOver');
+    };
+
+    
+
     socket.on('phase_timer_update', handlePhaseTimerUpdate);
     socket.on('phase_change', handlePhaseChange);
     socket.on('start_countdown', handleCountdown);
@@ -326,6 +372,7 @@ const GamePage = () => {
     socket.on('assign_role', handleRoleAssigned);
     socket.on('game_started', handleGameStarted);
     socket.on('game_state_update', handleGameStateUpdate);
+    socket.on('game_over', handleGameOver);
 
     // Detective result listener
     const handleDetectiveResult = (result) => {
@@ -393,7 +440,8 @@ const GamePage = () => {
       socket.off('game_state_update', handleGameStateUpdate);
       socket.off('detective_result', handleDetectiveResult);
       socket.off('day_vote_update', handleDayVoteUpdate);
-      socket.off('day_vote_result', handleDayVoteResult); // Clean up day vote result listener
+      socket.off('day_vote_result', handleDayVoteResult);
+      socket.off('game_over', handleGameOver);
     };
   }, [roomId, username, gameSettings, gameFlow]);
 
@@ -703,7 +751,6 @@ const GamePage = () => {
   };
 
   // Elimination Notification Component
-  // Update your EliminationNotification component
   const EliminationNotification = () => {
     if (!eliminationNotification) return null;
   
@@ -738,6 +785,180 @@ const GamePage = () => {
     );
   };
 
+
+  const GameOverScreen = ({ data }) => {
+
+    const navigate = useNavigate();
+    const headerRef = useRef(null);
+
+    useEffect(() => {
+      if (headerRef.current) {
+        headerRef.current.className = styles.gameOverHeader;
+      }
+    }, []);
+
+    const handleCreateNewGame = () => {  
+      const storedUsername = GameStorage.getUsername();
+      socket.emit('leave_game_room', roomId);
+      const newRoomId = uuidv4().substring(0, 8);
+      
+      const oldRoomId = GameStorage.getActiveRoom();
+      if (oldRoomId) {
+        console.log(`Leaving previous room ${oldRoomId} before creating new room`);
+        socket.emit('leave_game_room', oldRoomId);
+      }
+      
+      socket.emit('create_room', {
+        username: storedUsername,
+        roomId: newRoomId
+      });
+      
+      GameStorage.setTransitioning(newRoomId);
+      
+      navigate(`/lobby/${newRoomId}`, { 
+        state: { 
+          username: storedUsername,
+          isHost: true,
+          gameSettings: gameSettings
+        } 
+      });
+    };
+
+    const handleJoinGame = () => {  
+      const storedUsername = GameStorage.getUsername();
+      socket.emit('leave_game_room', roomId);
+      navigate('/joinRoom', { 
+        state: { 
+          username: storedUsername,
+          comingFromGame: true
+        } 
+      });
+    };
+  
+    const handleReturnHome = () => {
+      socket.emit('leave_game_room', roomId);
+      window.location.href = '/';
+    };
+  
+    return (
+      <div className={styles.gameOverContainer}>
+      <h1 ref={headerRef}>
+        {data.winner === 'town' ? 'Town Wins!' : 
+        data.winner === 'mafia' ? 'Mafia Wins!' : 
+        `Jester Wins! ${data.jesterName} fooled everyone!`}
+      </h1>
+        
+      <div className={styles.playerRolesGrid}>
+        <h2>Player Roles</h2>
+        {data.playerRoles.map((player, index) => (
+          <div 
+          key={index} 
+          className={`${styles.playerRoleCard} ${player.role === 'Mafia' ? styles.mafiaCard : styles.townCard} ${!player.wasAlive ? styles.deadPlayer : ''}`}
+          data-role={player.role}
+        >
+          <div className={styles.playerRoleName}>{player.username}</div>
+          <div className={styles.roleImageWrapper}>
+            <img 
+              className={styles.gameOverRoleImage} 
+              src={'../' + player.role + '.png'} 
+              alt={player.role} 
+            />
+          </div>
+          <div className={styles.playerRoleInfo}>
+            {player.role === 'Mafia' ?  '🔫  Mafia' : 
+            player.role === 'Detective' ? '🕵️ Detective' :
+            player.role === 'Doctor' ? '👨‍⚕️ Doctor' :
+            player.role === 'Jester' ? '🤡 Jester' :
+            '🧑‍🌾 Civilian'}
+          </div>
+          <div className={`${styles.playerFinalStatus} ${player.wasAlive ? styles.survived : styles.perished}`}>
+            {player.wasAlive ? 
+              '✓ Lived to tell the tale' : 
+              '✗ Met their demise'}
+          </div>
+        </div>
+        ))}
+      </div>
+        
+        <div className={styles.gameOverButtons}>
+          <button onClick={handleCreateNewGame} className={styles.newGameButton}>
+            Create New Game
+          </button>
+          <button onClick={handleJoinGame} className={styles.joinButton}>
+            Join Existing Game
+          </button>
+          <button onClick={handleReturnHome} className={styles.homeButton}>
+            Return Home
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const DevModePanel = () => {
+    if (!showDevButton) return null;
+  
+    if (!devMode) {
+      return (
+        <div className={styles.devModeToggle}>
+          <button onClick={toggleDevMode}>Enable Dev Mode</button>
+        </div>
+      );
+    }
+  
+  const simulateTownWin = () => {
+    socket.emit('dev_simulate_game_end', { roomId, winner: 'town' });
+  };
+  
+  const simulateMafiaWin = () => {
+    socket.emit('dev_simulate_game_end', { roomId, winner: 'mafia' });
+  };
+  
+  const simulateJesterWin = () => {
+    socket.emit('dev_simulate_game_end', { roomId, winner: 'jester' });
+  };
+
+  const handleDisableAndHide = () => {
+    setDevMode(false);
+    setShowDevButton(false);
+  };
+  
+  return (
+    <div className={styles.devModePanel}>
+      <h4>Dev Mode Controls</h4>
+      <div className={styles.devModeButtons}>
+        <button 
+          className={`${styles.gameOverButton} ${styles.townWin}`}
+          onClick={simulateTownWin}
+        >
+          Town Wins
+        </button>
+        <button 
+          className={`${styles.gameOverButton} ${styles.mafiaWin}`}
+          onClick={simulateMafiaWin}
+        >
+          Mafia Wins
+        </button>
+        <button 
+          className={`${styles.gameOverButton} ${styles.jesterWin}`}
+          onClick={simulateJesterWin}
+        >
+          Jester Wins
+        </button>
+      </div>
+      <button 
+        className={styles.disableDevButton} 
+        onClick={handleDisableAndHide}
+      >
+        Disable Dev Mode
+      </button>
+    </div>
+  );
+};
+
+
+
+
   // ===== RENDER LOGIC =====
   // Phase transitions have highest priority
   if (isPhaseTransitioning) {
@@ -748,6 +969,7 @@ const GamePage = () => {
       ${isFadingOutTransition ? styles.fadingOutTransition : styles.fadeInTransition}
     `;
     return (
+      <>
       <div className={transitionContainerClass.trim()}>
         <div className={styles.spinner}>
         <ReactHowler
@@ -761,6 +983,8 @@ const GamePage = () => {
         </div>
         <div className={styles.stars}></div>
       </div>
+      <DevModePanel />
+    </>
     );
   }
 
@@ -768,6 +992,7 @@ const GamePage = () => {
   switch(gameFlow) {
     case 'loading':
       return (
+        <>
         <div className={styles.countdownContainer}>
           <h1>Preparing Game...</h1>
           <div className={styles.loadingSpinner}>
@@ -775,9 +1000,12 @@ const GamePage = () => {
           </div>
           <h3>Get ready for the night...</h3>
         </div>
+        <DevModePanel />
+        </>
       );
     case 'countdown':
       return (
+        <>
         <div className={styles.countdownContainer}>
           <h1>Game Starting In...</h1>
           <ReactHowler
@@ -787,10 +1015,13 @@ const GamePage = () => {
           />
           <h2 className={countdown <= 3 ? styles.redCountdown : ''}>{countdown} seconds</h2>
         </div>
+        <DevModePanel />
+        </>
       );
     
     case 'roleReveal':
       return (
+        <>
         <div className={`${styles.roleCardsContainer} ${isFadingOut ? styles.fadingOut : ''}`}>
           <div className={styles.roleCard}>
             <h2>Your Role</h2>
@@ -800,10 +1031,13 @@ const GamePage = () => {
             </div>
           </div>
         </div>
+        <DevModePanel />
+      </>
       );
       
       case 'playing':
         return (
+          <>
           <div className={styles.gameContainer}>
             <div>
               <div className={styles.header}>
@@ -878,19 +1112,27 @@ const GamePage = () => {
                   <button type="submit" onClick={sendMessage}>Send</button>
                 </div>
               </div>
-              <RolesSection />
+              <RolesSection /> 
             </div>
           </div>
+          <DevModePanel />
+      </>
         );
+      case 'gameOver':
+        const isHost = gameState.players.find(p => p.username === username)?.isHost || false;
+        return <GameOverScreen data={gameOverData} isHost={isHost} />;
       
     default:
       return (
+        <>
         <div className={styles.countdownContainer}>
           <h1>Loading Game...</h1>
           <div className={styles.loadingSpinner}>
             <div className={styles.spinnerInner}></div>
           </div>
         </div>
+        <DevModePanel />
+        </>
       );
   }
 }

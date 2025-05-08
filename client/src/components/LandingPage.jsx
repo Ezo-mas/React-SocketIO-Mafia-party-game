@@ -6,7 +6,7 @@ const LandingPage = () => {
 
   // Typewriter effect
   useEffect(() => {
-    const texts = [" Mafia", " Police Officer", " Doctor", " Detective", " Civilian"];
+    const texts = [" Mafia", " Jester ", " Doctor", " Detective", " Civilian"];
     let index = 0;
     let charIndex = 0;
     let isDeleting = false;
