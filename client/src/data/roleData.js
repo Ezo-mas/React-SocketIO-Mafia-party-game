@@ -20,7 +20,7 @@ const roleData = [
     alignment: 'mafia'
    },
   {
-    name: 'Jester',
+    name: 'jester',
     description: 'Your goal is to act suspicious and make the town members vote you out. If you succeed, you win the game.',
     alignment: 'neutral'
   },
