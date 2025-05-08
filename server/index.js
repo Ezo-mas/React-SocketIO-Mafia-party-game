@@ -286,7 +286,15 @@ function startPhaseTimer(roomId) {
         
         console.log(`[DEBUG] processMafiaVotes returned: ${killedPlayer}`);
         console.log("Player statuses after vote processing:", 
-          room.players.map(p => ({ username: p.username, isAlive: p.isAlive })));
+        room.players.map(p => ({ username: p.username, isAlive: p.isAlive })));
+
+          io.to(roomId).emit('day_phase_start', { 
+            killedPlayer, 
+            players: room.players.map(player => ({
+              username: player.username,
+              isAlive: player.isAlive
+            }))
+          });
 
         if (killedPlayer) {
           console.log(`Night phase ended for room ${roomId}. Mafia killed: ${killedPlayer}`);
@@ -319,9 +327,11 @@ function startPhaseTimer(roomId) {
 
         if (eliminatedPlayer) {
           console.log(`Day phase ended for room ${roomId}. Player eliminated: ${eliminatedPlayer}`);
-          // Announce elimination? Maybe later.
+          // Emit elimination event to all clients
+          io.to(roomId).emit('day_vote_result', { eliminatedPlayer });
         } else {
            console.log(`Day phase ended for room ${roomId}. No one eliminated by vote.`);
+           io.to(roomId).emit('day_vote_result', { eliminatedPlayer: null });
         }
 
         // Update game state for day->night transition, preserving player statuses
@@ -339,10 +349,10 @@ function startPhaseTimer(roomId) {
       // Announce day vote result *before* phase change event if someone was eliminated
       console.log(`[DEBUG] Checking day vote result before emit: currentPhase=${currentPhase}, eliminatedPlayer=${eliminatedPlayer}, typeof=${typeof eliminatedPlayer}`); // DEBUG LOG
       if (currentPhase === 'day' && eliminatedPlayer) {
-         io.to(roomId).emit('day_vote_result', { eliminatedPlayer });
+         //io.to(roomId).emit('day_vote_result', { eliminatedPlayer });
          // Add a small delay before phase change to allow clients to process the result? Optional.
       } else if (currentPhase === 'day' && !eliminatedPlayer) {
-         io.to(roomId).emit('day_vote_result', { eliminatedPlayer: null }); // Indicate a tie or no votes
+         //io.to(roomId).emit('day_vote_result', { eliminatedPlayer: null }); // Indicate a tie or no votes
       }
 
 
@@ -768,8 +778,8 @@ io.on('connection', (socket) => {
         players: [],
         readyPlayers: [],
         settings: {
-          dayDuration: 120,
-          nightDuration: 60,
+          dayDuration: 30,
+          nightDuration: 30,
           mafiaPercentage: 30,
           detectiveEnabled: true,
           doctorEnabled: true,

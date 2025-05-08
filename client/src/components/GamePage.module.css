@@ -682,3 +682,58 @@
 .instructionsButton:hover {
     transform: translateY(-3px); 
 }
+
+/* Base notification style */
+.notification {
+  position: fixed;
+  top: 25%; /* Lowered as requested earlier */
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 8px;
+  padding: 15px 25px;
+  z-index: 1000;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  max-width: 80%;
+  transition: opacity 0.5s ease-in-out, transform 1s ease-in-out;
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+/* Town vote elimination notification */
+.townNotification {
+  color: #6bff6b; /* Green text */
+  border: 2px solid #6bff6b;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+}
+
+/* Mafia kill notification */
+.mafiaNotification {
+  color: #ff6b6b; /* Red text */
+  border: 2px solid #ff6b6b;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+}
+
+/* No elimination notification (town vote tie) */
+.noTownNotification {
+  color: #ffbb6b; /* Orange text */
+  border: 2px solid #ffbb6b;
+  box-shadow: 0 0 20px rgba(255, 187, 0, 0.5);
+}
+
+/* No kill notification (mafia didn't kill) */
+.noMafiaNotification {
+  color: #c4a1ff; /* Purple text */
+  border: 2px solid #c4a1ff;
+  box-shadow: 0 0 20px rgba(147, 112, 219, 0.5);
+}
+
+.notification.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.notification.hide {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-20px);
+}

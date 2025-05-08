@@ -69,6 +69,10 @@ const GamePage = () => {
   const [dayVotes, setDayVotes] = useState({}); // { username: count }
   const [hasVotedThisDay, setHasVotedThisDay] = useState(false);
   const [votedFor, setVotedFor] = useState(null); // Track who the current player voted for
+  
+  // ===== ELIMINATION NOTIFICATION STATE =====
+  const [eliminationNotification, setEliminationNotification] = useState(null); // { player: string, cause: 'vote' | 'mafia' }
+  const [showNotification, setShowNotification] = useState(false);
 
   // ===== GAME SETUP EFFECTS =====
   // Apply host settings
@@ -263,15 +267,14 @@ const GamePage = () => {
             phase: data.phase,
             // Add this to update player statuses:
             players: data.players ? data.players : prevState.players,
-            phase: data.phase, // Ensure phase is updated here
           }));
           setIsPhaseTransitioning(false);
           setTransitionPhase(null);
-
+    
           // Reset investigation status at the start of the day phase
           if (data.phase === 'day') {
             setHasInvestigatedThisNight(false);
-            console.log("Resetting detective investigation status for day phase.");
+            console.log("Resetting detective investigation status for day phase.");   
           }
           // Reset day voting status at the start of the night phase
           if (data.phase === 'night') {
@@ -348,13 +351,26 @@ const GamePage = () => {
     // Day vote result listener
     const handleDayVoteResult = ({ eliminatedPlayer }) => {
       if (eliminatedPlayer) {
-        alert(`${eliminatedPlayer} was eliminated by the town vote!`);
+        setShowNotification(false);
+        setEliminationNotification(null);
+
+        setTimeout(() => {
+          setEliminationNotification({ player: eliminatedPlayer, cause: 'vote' });
+          setShowNotification(true);
+          setTimeout(() => setShowNotification(false), 11000);
+        }, 100);
         // Update local state if the eliminated player is the current user
         if (eliminatedPlayer === username) {
           setGameState(prev => ({ ...prev, isAlive: false }));
         }
       } else {
-        alert("The town vote resulted in a tie. No one was eliminated.");
+        setShowNotification(false);
+        setEliminationNotification(null);
+        setTimeout(() => {
+          setEliminationNotification({ player: "No one", cause: 'vote' });
+          setShowNotification(true);
+          setTimeout(() => setShowNotification(false), 11000);
+        }, 100);
       }
       // Player list will update via the subsequent phase_change event from the server
     };
@@ -391,10 +407,21 @@ const GamePage = () => {
         }));
     
         if (killedPlayer) {
-          alert(`${killedPlayer} was killed during the night.`);
+          console.log("Setting notification for mafia kill:", killedPlayer);
+          // Don't clear notification first - just set the new one
+          setEliminationNotification({ player: killedPlayer, cause: 'mafia' });
+          setShowNotification(true);
+          
+          // Longer timeout for visibility
+          setTimeout(() => setShowNotification(false), 11000);
+        } else {
+          console.log("No one killed by mafia");
+          setEliminationNotification({ player: "No one", cause: 'mafia' });
+          setShowNotification(true);
+          setTimeout(() => setShowNotification(false), 11000); 
         }
-    
-        setGameFlow('playing'); // Transition to the playing state
+        
+        setGameFlow('playing');
       };
     
       socket.on('day_phase_start', handleDayPhaseStart);
@@ -675,6 +702,41 @@ const GamePage = () => {
     );
   };
 
+  // Elimination Notification Component
+  // Update your EliminationNotification component
+  const EliminationNotification = () => {
+    if (!eliminationNotification) return null;
+  
+    // Determine notification class based on type
+    let notificationTypeClass = '';
+    
+    if (eliminationNotification.cause === 'vote') {
+      notificationTypeClass = eliminationNotification.player === 'No one' 
+        ? styles.noTownNotification 
+        : styles.townNotification;
+    } else {
+      notificationTypeClass = eliminationNotification.player === 'No one' 
+        ? styles.noMafiaNotification 
+        : styles.mafiaNotification;
+    }
+    
+    // Combine classes
+    const notificationClass = `${styles.notification} ${showNotification ? styles.show : styles.hide} ${notificationTypeClass}`;
+    
+    return (
+      <div className={notificationClass}>
+        <p>
+          {eliminationNotification.cause === 'vote'
+            ? eliminationNotification.player === 'No one' 
+              ? `No one was eliminated by the town vote.` 
+              : `${eliminationNotification.player} was eliminated by the town vote!`
+            : eliminationNotification.player === 'No one'
+              ? `No one was killed during the night.`
+              : `${eliminationNotification.player} was killed by the Mafia during the night!`}
+        </p>
+      </div>
+    );
+  };
 
   // ===== RENDER LOGIC =====
   // Phase transitions have highest priority
@@ -795,8 +857,7 @@ const GamePage = () => {
                       {/* Popups */}
                       <InvestigationPopup />
                       {showVotingPopup && <DayVotingPopup onClose={() => setShowVotingPopup(false)} />}
-
-
+                      <EliminationNotification />
               <div className={styles['chat-box']}>
                 <div className={styles['chat-messages-container']}>
                   {messages.map((msg, index) => (
