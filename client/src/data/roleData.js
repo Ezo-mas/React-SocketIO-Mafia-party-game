@@ -7,12 +7,12 @@ const roleData = [
   {
     name: 'Doctor',
     description: 'Each night, as a dcotor you can choose one player to protect. That player will be immune to death that night.',
-    alignment: 'town'
+    alignment: 'doctor'
   },
   {
     name: 'Detective',
     description: 'Each night, you can investigate one player to find out if they are mafia or not.',
-    alignment: 'town'
+    alignment: 'detective'
   },
   {
     name: 'Mafia',

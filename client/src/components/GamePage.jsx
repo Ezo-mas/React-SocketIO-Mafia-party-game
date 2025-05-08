@@ -89,6 +89,13 @@ const GamePage = () => {
     setDevMode(prev => !prev);
   };
 
+  useEffect(() => {
+    document.body.classList.add('game-page');
+        return () => {
+      document.body.classList.remove('game-page');
+    };
+  }, []);
+
   // ===== GAME SETUP EFFECTS =====
   // Apply host settings
   useEffect(() => {
@@ -580,7 +587,6 @@ const GamePage = () => {
             onClose={() => setShowInstructions(false)}
           />
         )}
-        {/* Add green button for instructions */}
         <button
           className={styles.instructionsButton}
           onClick={() => setShowInstructions(true)}
@@ -772,19 +778,20 @@ const GamePage = () => {
     
     return (
       <div className={notificationClass}>
-        <p>
-          {eliminationNotification.cause === 'vote'
-            ? eliminationNotification.player === 'No one' 
-              ? `No one was eliminated by the town vote.` 
-              : `${eliminationNotification.player} was eliminated by the town vote!`
-            : eliminationNotification.player === 'No one'
-              ? `No one was killed during the night.`
-              : `${eliminationNotification.player} was killed by the Mafia during the night!`}
-        </p>
+        <div className={styles.notificationInner}>
+          <p>
+            {eliminationNotification.cause === 'vote'
+              ? eliminationNotification.player === 'No one' 
+                ? `No one was eliminated by the town vote.` 
+                : <><strong>{eliminationNotification.player}</strong> was eliminated by the town vote!</>
+              : eliminationNotification.player === 'No one'
+                ? `No one was killed during the night.`
+                : <><strong>{eliminationNotification.player}</strong> was killed by the Mafia during the night!</>}
+          </p>
+        </div>
       </div>
     );
   };
-
 
   const GameOverScreen = ({ data }) => {
 
@@ -853,7 +860,7 @@ const GamePage = () => {
         {data.playerRoles.map((player, index) => (
           <div 
           key={index} 
-          className={`${styles.playerRoleCard} ${player.role === 'Mafia' ? styles.mafiaCard : styles.townCard} ${!player.wasAlive ? styles.deadPlayer : ''}`}
+          className={`${styles.playerRoleCard} ${!player.wasAlive ? styles.deadPlayer : ''}`}
           data-role={player.role}
         >
           <div className={styles.playerRoleName}>{player.username}</div>
@@ -864,12 +871,18 @@ const GamePage = () => {
               alt={player.role} 
             />
           </div>
-          <div className={styles.playerRoleInfo}>
-            {player.role === 'Mafia' ?  '🔫  Mafia' : 
-            player.role === 'Detective' ? '🕵️ Detective' :
-            player.role === 'Doctor' ? '👨‍⚕️ Doctor' :
-            player.role === 'Jester' ? '🤡 Jester' :
-            '🧑‍🌾 Civilian'}
+          <div className={styles.gameOverRoleInfo}>
+            {player.role === 'Mafia' ? (
+              <>🔫 <span style={{marginLeft: '5px'}}>Mafia</span></>
+            ) : player.role === 'Detective' ? (
+              <>🕵️ <span style={{marginLeft: '5px'}}>Detective</span></>
+            ) : player.role === 'Doctor' ? (
+              <>👨‍⚕️ <span style={{marginLeft: '5px'}}>Doctor</span></>
+            ) : player.role === 'Jester' ? (
+              <>🤡 <span style={{marginLeft: '5px'}}>Jester</span></>
+            ) : (
+              <>🧑‍🌾 <span style={{marginLeft: '5px'}}>Civilian</span></>
+            )}
           </div>
           <div className={`${styles.playerFinalStatus} ${player.wasAlive ? styles.survived : styles.perished}`}>
             {player.wasAlive ? 
@@ -896,6 +909,7 @@ const GamePage = () => {
   };
 
   const DevModePanel = () => {
+    const [showNavBar, setShowNavBar] = useState(false);
     if (!showDevButton) return null;
   
     if (!devMode) {
@@ -922,39 +936,56 @@ const GamePage = () => {
     setDevMode(false);
     setShowDevButton(false);
   };
+
+  const toggleNavigation = () => {
+    const newNavState = !showNavBar;
+    setShowNavBar(newNavState);
+    
+    if (newNavState) {
+      document.body.classList.remove('game-page');
+    } else {
+      document.body.classList.add('game-page');
+    }
+  };
   
   return (
-    <div className={styles.devModePanel}>
-      <h4>Dev Mode Controls</h4>
-      <div className={styles.devModeButtons}>
+      <div className={styles.devModePanel}>
+        <h4>Dev Mode Controls</h4>
+        <div className={styles.devModeButtons}>
+          <button 
+            className={`${styles.gameOverButton} ${styles.townWin}`}
+            onClick={simulateTownWin}
+          >
+            Town Wins
+          </button>
+          <button 
+            className={`${styles.gameOverButton} ${styles.mafiaWin}`}
+            onClick={simulateMafiaWin}
+          >
+            Mafia Wins
+          </button>
+          <button 
+            className={`${styles.gameOverButton} ${styles.jesterWin}`}
+            onClick={simulateJesterWin}
+          >
+            Jester Wins
+          </button>
+          <button 
+            className={`${styles.navToggleButton} ${showNavBar ? styles.active : ''}`}
+            onClick={toggleNavigation}
+          >
+            {showNavBar ? 'Hide Navigation' : 'Show Navigation'}
+          </button>
+        </div>
         <button 
-          className={`${styles.gameOverButton} ${styles.townWin}`}
-          onClick={simulateTownWin}
+          className={styles.disableDevButton} 
+          onClick={handleDisableAndHide}
         >
-          Town Wins
-        </button>
-        <button 
-          className={`${styles.gameOverButton} ${styles.mafiaWin}`}
-          onClick={simulateMafiaWin}
-        >
-          Mafia Wins
-        </button>
-        <button 
-          className={`${styles.gameOverButton} ${styles.jesterWin}`}
-          onClick={simulateJesterWin}
-        >
-          Jester Wins
+          Disable Dev Mode
         </button>
       </div>
-      <button 
-        className={styles.disableDevButton} 
-        onClick={handleDisableAndHide}
-      >
-        Disable Dev Mode
-      </button>
-    </div>
-  );
-};
+    );
+  };
 
 
 
@@ -1048,12 +1079,12 @@ const GamePage = () => {
                   </div>
                 </div>
               </div>
-      
-              <div className={styles.roleInfo}>
-                <h3>Your Role: {gameState.role}</h3>
-                <p>Status: {gameState.isAlive ? 'Alive' : 'Dead'}</p>
+              <div className={styles.playerRoleInfo}>
+                <h3>Your Role: <span className={`${styles.playerRoleText} ${styles[gameState.role.toLowerCase()]}`}>{gameState.role}</span></h3>
+                <p className={gameState.isAlive ? styles.aliveStatus : styles.deadStatus}>
+                  Status: {gameState.isAlive ? 'Alive' : 'Dead'}
+                </p>
               </div>
-      
               <div className={styles.mainContent}>
                 <div className={styles.playerGrid}>
                   {gameState.players.map((player, index) => (

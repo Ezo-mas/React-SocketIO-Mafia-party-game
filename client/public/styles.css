@@ -571,3 +571,7 @@ section .button button:hover {
     background-color: #fff;
     color: #b74b4b;
 }
+
+.game-page nav {
+    display: none;
+  }
