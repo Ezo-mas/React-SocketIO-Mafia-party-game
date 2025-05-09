@@ -123,7 +123,7 @@ const LandingPage = () => {
               </div>
 
               <div className={styles.card}>
-                <img src="jester.png" alt="Card Image" />
+                <img src="Jester.png" alt="Card Image" />
                 <div className={styles['card-info']}>
                   <div className={styles.title}>Lies are your game. Getting caught? That’s the win.</div>
                   <div className={styles.title}>Your goal: Get yourself voted out during the day.</div>
