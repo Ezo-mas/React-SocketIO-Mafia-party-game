@@ -758,21 +758,27 @@
   }
   
   .chat-input button {
-    background: linear-gradient(45deg, #b74b4b, #9e3e3e);
-    color: white;
-    border: none;
-    border-radius: 25px;
-    padding: 0 20px;
-    font-weight: 600;
+    background: rgba(88, 88, 88, 0.3);
+    color: #d0d0d0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    padding: 8px 15px;
+    font-weight: 500;
+    font-size: 0.9rem;
     cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 4px 8px rgba(183, 75, 75, 0.3);
+    transition: all 0.3s ease;
+    box-shadow: none;
   }
   
   .chat-input button:hover {
-    background: linear-gradient(45deg, #c25555, #aa4747);
+    background: rgba(88, 88, 88, 0.5);
     transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(183, 75, 75, 0.4);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .chat-input button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   }
 
   .blackScreen {
@@ -820,19 +826,20 @@
   top: 18%;
   left: 50%;
   transform: translateX(-50%) translateY(-100px);
-  padding: 14px 20px;
-  border-radius: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  padding: 18px 28px;
+  border-radius: 999px;
+  background: rgba(26, 26, 29, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  color: #e1e1e6;
   z-index: 1000;
   text-align: center;
   width: 70%;
-  max-width: 450px;
-  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+  max-width: 420px;
   opacity: 0;
-  background: rgba(20, 20, 20, 0.7);
-  backdrop-filter: blur(8px);
-  border: none;
   will-change: transform, opacity;
+  pointer-events: none;
 }
 
 .notification p {
@@ -842,62 +849,69 @@
   line-height: 1.4;
 }
 
-.townNotification {
-  background: linear-gradient(90deg, 
-    rgba(96, 228, 137, 0.35) 0%,
-    rgba(96, 228, 137, 0.25) 15%,
-    rgba(96, 228, 137, 0.15) 30%,
-    rgba(20, 20, 20, 0.6) 65%,
-    rgba(20, 20, 20, 0.75) 100%);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(96, 228, 137, 0.2);
-  color: #90ee90;
-}
-
-.mafiaNotification {
-  background: linear-gradient(90deg, 
-    rgba(255, 77, 77, 0.35) 0%,
-    rgba(255, 77, 77, 0.25) 15%,
-    rgba(255, 77, 77, 0.15) 30%,
-    rgba(20, 20, 20, 0.6) 65%,
-    rgba(20, 20, 20, 0.75) 100%);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 77, 77, 0.2);
-  color: #ff6b6b;
-}
-.noTownNotification {
-  background: linear-gradient(90deg, 
-    rgba(255, 193, 7, 0.35) 0%,
-    rgba(255, 193, 7, 0.25) 15%,
-    rgba(255, 193, 7, 0.15) 30%,
-    rgba(20, 20, 20, 0.6) 65%,
-    rgba(20, 20, 20, 0.75) 100%);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 193, 7, 0.2);
-  color: #ffbb6b;
-}
-.noMafiaNotification {
-  background: linear-gradient(90deg, 
-    rgba(183, 112, 255, 0.35) 0%,
-    rgba(183, 112, 255, 0.25) 15%,
-    rgba(183, 112, 255, 0.15) 30%,
-    rgba(20, 20, 20, 0.6) 65%,
-    rgba(20, 20, 20, 0.75) 100%);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(183, 112, 255, 0.2);
-  color: #c4a1ff;
-}
-
-.notification.show {
-  transform: translateX(-50%) translateY(0);
-  opacity: 1;
-}
-
-.notification.hide {
-  transform: translateX(-50%) translateY(-100px);
-  opacity: 0;
-}
-
 .notification p::before {
   margin-right: 12px;
   font-size: 1.2em;
+  filter: drop-shadow(0 0 6px currentColor);
 }
+
+.townNotification {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  color: #b7ffd6;
+  background: rgba(26, 26, 29, 0.85);
+}
+.mafiaNotification {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  color: #ff7272;
+  background: rgba(26, 26, 29, 0.85);
+}
+.noTownNotification {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  color: #ffe4b7;
+  background: rgba(22, 22, 26, 0.88);
+}
+.noMafiaNotification {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  color: #e6d6ff;
+  background: rgba(22, 22, 26, 0.88);
+}
+
+.notification.animateIn {
+  animation: slideIn 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+}
+
+.notification.animateOut {
+  animation: slideOut 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+}
+
+@keyframes slideIn {
+  0% {
+    transform: translateX(-50%) translateY(-100px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  0% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(-100px);
+    opacity: 0;
+  }
+}
+
+.static {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+
 
 .townNotification p::before {
   content: "⚖️";
@@ -1030,24 +1044,26 @@
   border: none; 
 }
 
+
+
 .playerRoleText.civilian {
-  color: #f0e0a0; 
+  color: rgba(255, 224, 102, 0.75);
 }
 
 .playerRoleText.mafia {
-  color: #ff7070;
+  color: rgba(255, 77, 77, 0.75);
 }
 
 .playerRoleText.detective {
-  color: #90b5ff;
+  color: rgba(112, 169, 255, 0.75);
 }
 
 .playerRoleText.doctor {
-  color: #80eba0;
+  color: rgba(96, 228, 137, 0.75);
 }
 
 .playerRoleText.jester {
-  color: #dba8ff;
+  color: rgba(211, 138, 255, 0.75);
 }
 
 .playerFinalStatus {
@@ -1237,9 +1253,9 @@
 
 /* Special role styles */
 .playerRoleCard[data-role="Mafia"] .gameOverRoleInfo {
-  border-color: #ff4d4d !important;
-  color: #ff4d4d;
-  text-shadow: 0 0 5px rgba(255, 0, 0, 0.3);
+  border-color: #b80000 !important;
+  color: #d10000;
+  text-shadow: 0 0 5px rgba(150, 0, 0, 0.4);
 }
 
 .playerRoleCard[data-role="Jester"] .gameOverRoleInfo {
@@ -1255,8 +1271,8 @@
 }
 
 .playerRoleCard[data-role="Doctor"] .gameOverRoleInfo {
-  border-color: #60e489 !important;
-  color: #60e489;
+  border-color: #34d3b0 !important;
+  color: #34d3b0;
   text-shadow: 0 0 5px rgba(75, 183, 110, 0.3);
 }
 
@@ -1280,13 +1296,17 @@
 .playerFinalStatus.survived {
   color: #60e489;
   border-color: #60e489;
-  background-color: rgba(75, 183, 110, 0.1);
+  background-color: rgba(52, 211, 153, 0.15);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
+  font-weight: 600;
 }
 
 .playerFinalStatus.perished {
-  color: #ff7e7e;
-  border-color: #ff7e7e;
-  background-color: rgba(255, 126, 126, 0.1);
+  color: #f87171;
+  border-color: #f87171;
+  background-color: rgba(248, 113, 113, 0.15);
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.3);
+  font-weight: 600;
 }
 
 .playerRoleName {

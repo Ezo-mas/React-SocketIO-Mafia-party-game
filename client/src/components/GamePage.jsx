@@ -71,10 +71,14 @@ const GamePage = () => {
   const [hasVotedThisDay, setHasVotedThisDay] = useState(false);
   const [votedFor, setVotedFor] = useState(null); // Track who the current player voted for
   
-  // ===== ELIMINATION NOTIFICATION STATE =====
+  // ===== ELIMINATION NOTIFICATION STATES AND ANIMATIONS =====
   const [eliminationNotification, setEliminationNotification] = useState(null); // { player: string, cause: 'vote' | 'mafia' }
   const [showNotification, setShowNotification] = useState(false);
-
+  const [notificationAnimation, setNotificationAnimation] = useState('');
+  const lastNotificationRef = useRef(null);
+  const notificationTimeoutRef = useRef(null);
+  const [ notificationStatic, setNotificationStatic ] = useState(false);
+  
   // ===== GAME OVER STATE =====
   const [gameOverData, setGameOverData] = useState({
     winner: null,  
@@ -85,6 +89,7 @@ const GamePage = () => {
   const [devMode, setDevMode] = useState(false); 
   const [showDevButton, setShowDevButton] = useState(false);
 
+  // ===== DEV MODE NAV STATE =====
   const toggleDevMode = () => {
     setDevMode(prev => !prev);
   };
@@ -214,13 +219,20 @@ const GamePage = () => {
           console.log("Updated player statuses:", 
             updatedState.players.map(p => `${p.username}: ${p.isAlive ? 'Alive' : 'Dead'}`));
         }
+        let newIsAlive = gameState.isAlive;
+        if (updatedState.players) {
+          const me = updatedState.players.find(p => p.username === username);
+          if (me) newIsAlive = me.isAlive;
+        }
         
         // Make sure we're replacing the entire players array, not just merging properties
         if (updatedState.players) {
           setGameState(prevState => ({
             ...prevState,
             ...updatedState,
-            players: updatedState.players // Explicitly replace the players array
+            players: updatedState.players, // Explicitly replace the players array
+            isAlive: newIsAlive
+
           }));
         } else {
           setGameState(prevState => ({
@@ -307,12 +319,19 @@ const GamePage = () => {
       setTimeout(() => {
         setIsFadingOutTransition(true);
         setTimeout(() => {
-          setGameState(prevState => ({
-            ...prevState,
-            phase: data.phase,
-            // Add this to update player statuses:
-            players: data.players ? data.players : prevState.players,
-          }));
+          setGameState(prevState => {
+            let newIsAlive = prevState.isAlive;
+            if (data.players) {
+              const me = data.players.find(p => p.username === username);
+              if (me) newIsAlive = me.isAlive;
+            }
+            return {
+              ...prevState,
+              phase: data.phase,
+              players: data.players ? data.players : prevState.players,
+              isAlive: newIsAlive
+            };
+          });
           setIsPhaseTransitioning(false);
           setTransitionPhase(null);
     
@@ -404,28 +423,20 @@ const GamePage = () => {
 
     // Day vote result listener
     const handleDayVoteResult = ({ eliminatedPlayer }) => {
-      if (eliminatedPlayer) {
-        setShowNotification(false);
-        setEliminationNotification(null);
+            let newNotification;
+        if (eliminatedPlayer) {
+          newNotification = { player: eliminatedPlayer, cause: 'vote' };
+        } else {
+          newNotification = { player: "No one", cause: 'vote' };
+        }
 
         setTimeout(() => {
-          setEliminationNotification({ player: eliminatedPlayer, cause: 'vote' });
-          setShowNotification(true);
-          setTimeout(() => setShowNotification(false), 11000);
-        }, 100);
+          showEliminationNotification(newNotification, 5000);
+        }, 5000);
         // Update local state if the eliminated player is the current user
         if (eliminatedPlayer === username) {
           setGameState(prev => ({ ...prev, isAlive: false }));
         }
-      } else {
-        setShowNotification(false);
-        setEliminationNotification(null);
-        setTimeout(() => {
-          setEliminationNotification({ player: "No one", cause: 'vote' });
-          setShowNotification(true);
-          setTimeout(() => setShowNotification(false), 11000);
-        }, 100);
-      }
       // Player list will update via the subsequent phase_change event from the server
     };
     socket.on('day_vote_result', handleDayVoteResult);
@@ -460,25 +471,19 @@ const GamePage = () => {
           ...prevState,
           players,
         }));
-    
-        if (killedPlayer) {
-          console.log("Setting notification for mafia kill:", killedPlayer);
-          // Don't clear notification first - just set the new one
-          setEliminationNotification({ player: killedPlayer, cause: 'mafia' });
-          setShowNotification(true);
-          
-          // Longer timeout for visibility
-          setTimeout(() => setShowNotification(false), 11000);
-        } else {
-          console.log("No one killed by mafia");
-          setEliminationNotification({ player: "No one", cause: 'mafia' });
-          setShowNotification(true);
-          setTimeout(() => setShowNotification(false), 11000); 
-        }
-        
+
         setGameFlow('playing');
-      };
+
     
+        setTimeout(() => {
+          const newNotification = killedPlayer
+            ? { player: killedPlayer, cause: 'mafia' }
+            : { player: "No one", cause: 'mafia' };
+      
+          showEliminationNotification(newNotification, 5000);
+        }, 5000);
+      };
+
       socket.on('day_phase_start', handleDayPhaseStart);
     
       return () => {
@@ -760,29 +765,32 @@ const GamePage = () => {
   const EliminationNotification = () => {
     if (!eliminationNotification) return null;
   
-    // Determine notification class based on type
     let notificationTypeClass = '';
-    
     if (eliminationNotification.cause === 'vote') {
-      notificationTypeClass = eliminationNotification.player === 'No one' 
-        ? styles.noTownNotification 
-        : styles.townNotification;
+      notificationTypeClass = eliminationNotification.player === 'No one'
+        ? 'noTownNotification'
+        : 'townNotification';
     } else {
-      notificationTypeClass = eliminationNotification.player === 'No one' 
-        ? styles.noMafiaNotification 
-        : styles.mafiaNotification;
+      notificationTypeClass = eliminationNotification.player === 'No one'
+        ? 'noMafiaNotification'
+        : 'mafiaNotification';
     }
-    
-    // Combine classes
-    const notificationClass = `${styles.notification} ${showNotification ? styles.show : styles.hide} ${notificationTypeClass}`;
-    
+  
+    const notificationClass = [
+      styles.notification,
+      showNotification ? styles.show : styles.hide,
+      styles[notificationTypeClass],
+      notificationAnimation ? styles[notificationAnimation] : '',
+      notificationStatic ? styles.static : ''
+    ].filter(Boolean).join(' ');
+  
     return (
       <div className={notificationClass}>
         <div className={styles.notificationInner}>
           <p>
             {eliminationNotification.cause === 'vote'
-              ? eliminationNotification.player === 'No one' 
-                ? `No one was eliminated by the town vote.` 
+              ? eliminationNotification.player === 'No one'
+                ? `No one was eliminated by the town vote.`
                 : <><strong>{eliminationNotification.player}</strong> was eliminated by the town vote!</>
               : eliminationNotification.player === 'No one'
                 ? `No one was killed during the night.`
@@ -792,6 +800,56 @@ const GamePage = () => {
       </div>
     );
   };
+  
+  const showEliminationNotification = (newNotification, displayMs = 5000) => {
+    if (
+      showNotification &&
+      eliminationNotification &&
+      eliminationNotification.player === newNotification.player &&
+      eliminationNotification.cause === newNotification.cause
+    ) {
+      return;
+    }
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+      notificationTimeoutRef.current = null;
+    }
+  
+    setEliminationNotification(newNotification);
+    setNotificationAnimation('animateIn');
+    setNotificationStatic(false);
+    setShowNotification(true);
+    lastNotificationRef.current = newNotification;
+  
+    notificationTimeoutRef.current = setTimeout(() => {
+      setNotificationAnimation('animateOut');
+      setNotificationStatic(false);
+      setTimeout(() => {
+        setShowNotification(false);
+        setEliminationNotification(null);
+        notificationTimeoutRef.current = null;
+      }, 700);
+    }, displayMs);
+  };
+
+  useEffect(() => {
+    if (notificationAnimation === 'animateIn') {
+      const timer = setTimeout(() => {
+        setNotificationAnimation('');
+        setNotificationStatic(true);
+      }, 700); 
+      return () => clearTimeout(timer);
+    }
+  }, [notificationAnimation]);
+
+  useEffect(() => {
+    if (!showNotification && notificationAnimation) {
+      setNotificationAnimation('');
+    }
+  }, [showNotification, notificationAnimation]);
+
+
+
 
   const GameOverScreen = ({ data }) => {
 
@@ -804,8 +862,11 @@ const GamePage = () => {
       }
     }, []);
 
-    const handleCreateNewGame = () => {  
+    const handleCreateNewGame = () => { 
+
+      GameStorage.setUsername(username);
       const storedUsername = GameStorage.getUsername();
+
       socket.emit('leave_game_room', roomId);
       const newRoomId = uuidv4().substring(0, 8);
       
@@ -815,11 +876,9 @@ const GamePage = () => {
         socket.emit('leave_game_room', oldRoomId);
       }
       
-      socket.emit('create_room', {
-        username: storedUsername,
-        roomId: newRoomId
-      });
-      
+      socket.emit('navigation_intent', newRoomId);
+      socket.emit('join_room', newRoomId, storedUsername, true);
+          
       GameStorage.setTransitioning(newRoomId);
       
       navigate(`/lobby/${newRoomId}`, { 
@@ -832,7 +891,10 @@ const GamePage = () => {
     };
 
     const handleJoinGame = () => {  
+      
+      GameStorage.setUsername(username);
       const storedUsername = GameStorage.getUsername();
+
       socket.emit('leave_game_room', roomId);
       navigate('/joinRoom', { 
         state: { 

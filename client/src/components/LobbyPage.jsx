@@ -36,8 +36,8 @@ const LobbyPage = () => {
   
   // Game settings state
   const [gameSettings, setGameSettings] = useState({
-    dayDuration: 120,
-    nightDuration: 60,
+    dayDuration: 30,
+    nightDuration: 30,
     mafiaPercentage: 30,
     detectiveEnabled: true,
     doctorEnabled: true,
