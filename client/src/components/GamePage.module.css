@@ -1336,3 +1336,24 @@
   background: #2c7be5;
 }
 
+.protectedNotification {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  color: #c0ffea;
+  background: rgba(22, 60, 53, 0.88);
+}
+
+.protectedNotification p::before {
+  content: "🛡️";
+  margin-right: 8px;
+}
+
+.doctorNotification {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  color: #c0ffe0;
+  background: rgba(22, 26, 22, 0.88);
+}
+
+.doctorNotification p::before {
+  content: "💉";
+}
+

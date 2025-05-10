@@ -145,18 +145,21 @@ function processMafiaVotes(roomId) {
   
   console.log(`[DEBUG] Selected target: ${targetUsername}`);
 
-    // Check if doctor healed this player
-    const doctorHealTarget = nightActions[roomId]?.doctorHeal;
-    if (doctorHealTarget === targetUsername) {
-      console.log(`[DEBUG] Doctor protected ${targetUsername} from being killed!`);
-      delete mafiaVotes[roomId];
-      return null; // Return null to indicate no one was killed
-    }
+  // Check if doctor healed this player
+  const doctorHealTarget = nightActions[roomId]?.doctorHeal;
+  const wasProtected = doctorHealTarget === targetUsername;
+  
+  if (wasProtected) {
+    console.log(`[DEBUG] Doctor protected ${targetUsername} from being killed!`);
+    
+    // Don't mark the player as dead if they were protected
+    // Return information about the protection
+    return { targetUsername, wasProtected: true };
+  }
 
-  // Mark ONLY the target as dead
+  // Mark ONLY the target as dead (not protected)
   const targetPlayer = room.players.find(p => p.username === targetUsername);
   if (targetPlayer) {
-    console.log(`[DEBUG] Found target player:`, targetPlayer);
     // Verify player is alive before changing status
     if (targetPlayer.isAlive !== false) {
       targetPlayer.isAlive = false;
@@ -167,17 +170,14 @@ function processMafiaVotes(roomId) {
         delete mafiaVotes[roomId];
         return null; // Game over, no need to continue
       }
-    } else {
-      console.log(`[DEBUG] Target ${targetUsername} was already dead`);
     }
-  } else {
-    console.log(`[DEBUG] Could not find player with username ${targetUsername}`);
   }
 
   // Clear votes for the next night
   delete mafiaVotes[roomId];
 
-  return targetUsername; // Return the killed player's username
+  // Return information about the kill (not protected)
+  return { targetUsername, wasProtected: false };
 }
 
 // Process day votes at the end of the day phase
@@ -311,10 +311,6 @@ function startPhaseTimer(roomId) {
 
       // Clear night actions when night ends (transitioning to day)
       if (currentPhase === 'night') {
-        console.log(`[DEBUG] Night ended for room ${roomId}. Clearing night actions.`);
-        if (nightActions[roomId]) {
-          delete nightActions[roomId]; // Clear actions for the ended night
-        }
 
         console.log(`[DEBUG] Processing votes for room ${roomId}`);
         console.log(`[DEBUG] mafiaVotes for room:`, mafiaVotes[roomId] || "No votes");
@@ -324,6 +320,11 @@ function startPhaseTimer(roomId) {
           
         // Process Mafia votes at the end of the night phase
         const killedPlayer = processMafiaVotes(roomId);
+
+        console.log(`[DEBUG] Night ended for room ${roomId}. Clearing night actions.`);
+        if (nightActions[roomId]) {
+          delete nightActions[roomId]; // Clear actions AFTER processing votes
+        }
         
         console.log(`[DEBUG] processMafiaVotes returned: ${killedPlayer}`);
         console.log("Player statuses after vote processing:", 
@@ -335,7 +336,8 @@ function startPhaseTimer(roomId) {
         }
 
           io.to(roomId).emit('day_phase_start', { 
-            killedPlayer, 
+            // Use mafiaAction instead of killedPlayer to include protection info
+            mafiaAction: killedPlayer || { targetUsername: null, wasProtected: false },
             players: room.players.map(player => ({
               username: player.username,
               isAlive: player.isAlive

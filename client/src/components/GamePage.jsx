@@ -469,22 +469,39 @@ const GamePage = () => {
 
   //temp location, idk where to put this yet
     useEffect(() => {
-      const handleDayPhaseStart = ({ killedPlayer, players }) => {
-        console.log(`Day phase started. Killed player: ${killedPlayer}`);
+      const handleDayPhaseStart = ({ mafiaAction, players }) => {
+        console.log(`Day phase started. Mafia action:`, mafiaAction);
         setGameState(prevState => ({
           ...prevState,
           players,
         }));
-
-        setGameFlow('playing');
-
-    
-        setTimeout(() => {
-          const newNotification = killedPlayer
-            ? { player: killedPlayer, cause: 'mafia' }
-            : { player: "No one", cause: 'mafia' };
       
-          showEliminationNotification(newNotification, 5000);
+        setGameFlow('playing');
+      
+        // Process night actions results
+        setTimeout(() => {
+          if (!mafiaAction || !mafiaAction.targetUsername) {
+            // No mafia target
+            showEliminationNotification({ 
+              player: "No one", 
+              cause: 'mafia',
+              protected: false 
+            }, 5000);
+          } else if (mafiaAction.wasProtected) {
+            // Mafia targeted someone, but they were protected
+            showEliminationNotification({ 
+              player: mafiaAction.targetUsername, 
+              cause: 'mafia', 
+              protected: true 
+            }, 5000);
+          } else {
+            // Mafia successfully killed their target
+            showEliminationNotification({ 
+              player: mafiaAction.targetUsername, 
+              cause: 'mafia', 
+              protected: false 
+            }, 5000);
+          }
         }, 5000);
       };
 
@@ -822,10 +839,16 @@ const DoctorAction = () => {
       notificationTypeClass = eliminationNotification.player === 'No one'
         ? 'noTownNotification'
         : 'townNotification';
-    } else {
-      notificationTypeClass = eliminationNotification.player === 'No one'
-        ? 'noMafiaNotification'
-        : 'mafiaNotification';
+    } else if (eliminationNotification.cause === 'mafia') {
+      if (eliminationNotification.protected) {
+        notificationTypeClass = 'protectedNotification';
+      } else {
+        notificationTypeClass = eliminationNotification.player === 'No one'
+          ? 'noMafiaNotification'
+          : 'mafiaNotification';
+      }
+    } else if (eliminationNotification.cause === 'doctor') {
+      notificationTypeClass = 'doctorNotification';
     }
   
     const notificationClass = [
@@ -840,13 +863,19 @@ const DoctorAction = () => {
       <div className={notificationClass}>
         <div className={styles.notificationInner}>
           <p>
-            {eliminationNotification.cause === 'vote'
-              ? eliminationNotification.player === 'No one'
+            {eliminationNotification.cause === 'vote' ? (
+              eliminationNotification.player === 'No one'
                 ? `No one was eliminated by the town vote.`
                 : <><strong>{eliminationNotification.player}</strong> was eliminated by the town vote!</>
-              : eliminationNotification.player === 'No one'
-                ? `No one was killed during the night.`
-                : <><strong>{eliminationNotification.player}</strong> was killed by the Mafia during the night!</>}
+            ) : eliminationNotification.cause === 'mafia' ? (
+              eliminationNotification.player === 'No one' 
+                ? `No one was targeted by the Mafia during the night.`
+                : eliminationNotification.protected
+                  ? <><strong>{eliminationNotification.player}</strong> was targeted by the Mafia, but was protected by the Doctor!</>
+                  : <><strong>{eliminationNotification.player}</strong> was killed by the Mafia during the night!</>
+            ) : (
+              <><strong>{eliminationNotification.player}</strong> was revived by the Doctor!</>
+            )}
           </p>
         </div>
       </div>
