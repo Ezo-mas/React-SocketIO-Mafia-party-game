@@ -65,6 +65,9 @@ const GamePage = () => {
   const [showInvestigationPopup, setShowInvestigationPopup] = useState(false);
   const [hasInvestigatedThisNight, setHasInvestigatedThisNight] = useState(false);
 
+  // ===== DOCTOR STATE =====
+  const [hasHealedThisNight, setHasHealedThisNight] = useState(false);
+
   // ===== DAY VOTING STATE =====
   const [showVotingPopup, setShowVotingPopup] = useState(false);
   const [dayVotes, setDayVotes] = useState({}); // { username: count }
@@ -345,6 +348,7 @@ const GamePage = () => {
             setHasVotedThisDay(false);
             setVotedFor(null);
             setDayVotes({}); // Clear votes visually
+            setHasHealedThisNight(false);
             console.log("Resetting day voting status for night phase.");
           }
         }, 1000); // End of inner timeout (fade in)
@@ -692,6 +696,52 @@ const GamePage = () => {
       </div>
     );
   };
+
+  // Doctor Action UI
+const DoctorAction = () => {
+  const [playpause, setPlaypause] = useState(false);
+
+  if (gameState.phase !== 'night' || gameState.role !== 'Doctor' || !gameState.isAlive) {
+    return null;
+  }
+  
+  const handleHeal = (targetUsername) => {
+    if (hasHealedThisNight) {
+      alert("You can only heal one player per night.");
+      return;
+    }
+    socket.emit('doctor_heal', { roomId, targetUsername });
+    console.log(`Doctor healing ${targetUsername}`);
+    setHasHealedThisNight(true);
+    setPlaypause(!playpause);
+  };
+
+  // Get valid targets (any alive player, including self)
+  const validTargets = gameState.players.filter(player => player.isAlive);
+
+  return (
+    <div className={styles.voteContainer}>
+      <h3>Choose a Player to Protect</h3>
+      <ReactHowler src='../mygtukas.mp3' playing={playpause} />
+      {validTargets.length > 0 ? (
+        <ul>
+          {validTargets.map(player => (
+            <li key={player.username}>
+              <button 
+                onClick={() => handleHeal(player.username)}
+                disabled={hasHealedThisNight}
+              >
+                {player.username} {player.username === username ? "(You)" : ""}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No valid targets available.</p>
+      )}
+    </div>
+  );
+};
 
    // Investigation Result Popup
    const InvestigationPopup = () => {
@@ -1181,6 +1231,7 @@ const GamePage = () => {
                         {/* Night Phase Actions */}
                         {gameState.phase === 'night' && gameState.role === 'Mafia' && gameState.isAlive && <MafiaVoting />}
                         {gameState.phase === 'night' && gameState.role === 'Detective' && gameState.isAlive && <DetectiveAction />}
+                        {gameState.phase === 'night' && gameState.role === 'Doctor' && gameState.isAlive && <DoctorAction />}
                       </div>
 
                       {/* Popups */}

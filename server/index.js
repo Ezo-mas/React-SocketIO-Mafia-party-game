@@ -145,6 +145,14 @@ function processMafiaVotes(roomId) {
   
   console.log(`[DEBUG] Selected target: ${targetUsername}`);
 
+    // Check if doctor healed this player
+    const doctorHealTarget = nightActions[roomId]?.doctorHeal;
+    if (doctorHealTarget === targetUsername) {
+      console.log(`[DEBUG] Doctor protected ${targetUsername} from being killed!`);
+      delete mafiaVotes[roomId];
+      return null; // Return null to indicate no one was killed
+    }
+
   // Mark ONLY the target as dead
   const targetPlayer = room.players.find(p => p.username === targetUsername);
   if (targetPlayer) {
@@ -1418,6 +1426,37 @@ socket.on('detective_investigate', ({ roomId, targetUsername }) => {
     target: targetUsername,
     isMafia: isMafia
   });
+});
+
+socket.on('doctor_heal', ({ roomId, targetUsername }) => {
+  console.log(`[DEBUG] Received doctor_heal: ${socket.id} healing ${targetUsername} in room ${roomId}`);
+
+  const room = rooms[roomId];
+  if (!room || !room.gameState || room.gameState.phase !== 'night') {
+    console.log(`[DEBUG] Invalid state for doctor action in room ${roomId}`);
+    return;
+  }
+
+  const doctor = room.players.find(p => p.id === socket.id);
+  if (!doctor || doctor.role !== 'Doctor' || !doctor.isAlive) {
+    console.log(`[DEBUG] Invalid doctor: ${doctor?.username} (Role: ${doctor?.role}, Alive: ${doctor?.isAlive})`);
+    return;
+  }
+
+  // Check if this doctor has already acted this night
+  if (nightActions[roomId] && nightActions[roomId][socket.id]) {
+    console.log(`[DEBUG] Doctor ${doctor.username} (${socket.id}) already healed someone this night.`);
+    return;
+  }
+
+  // Store the doctor's healing action
+  if (!nightActions[roomId]) {
+    nightActions[roomId] = {};
+  }
+  
+  // Record the doctor's healing target
+  nightActions[roomId].doctorHeal = targetUsername;
+  console.log(`[DEBUG] Doctor ${doctor.username} (${socket.id}) is protecting ${targetUsername}`);
 });
 
 // Handle Day Voting
