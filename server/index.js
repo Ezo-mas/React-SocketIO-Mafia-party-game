@@ -1344,6 +1344,19 @@ socket.on('mafia_vote', ({ roomId, targetUsername }) => {
     return;
   }
 
+    // Check if target is Mafia - prevent voting for self or other Mafia
+    const targetPlayer = room.players.find(p => p.username === targetUsername);
+    if (!targetPlayer) {
+      console.log(`[DEBUG] Target player ${targetUsername} not found`);
+      return;
+    }
+  
+    if (targetPlayer.role === 'Mafia') {
+      console.log(`[DEBUG] Cannot vote for another Mafia member: ${targetUsername}`);
+      socket.emit('error', 'You cannot vote for yourself or another Mafia member');
+      return;
+    }
+
   // Initialize mafiaVotes for this room if it doesn't exist
   if (!mafiaVotes[roomId]) {
     mafiaVotes[roomId] = {};

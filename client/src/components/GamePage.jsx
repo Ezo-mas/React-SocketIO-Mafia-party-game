@@ -603,45 +603,47 @@ const GamePage = () => {
   };
 
     // Mafia voting UI
-  const MafiaVoting = () => {
-
-    const [playpause, setPlaypause] = useState(false);
-
-
-    if (gameState.phase !== 'night' || gameState.role !== 'Mafia') {
-      console.log(`Phase: ${gameState.phase}, Role: ${gameState.role}`);
-      return null;
-    }
+    const MafiaVoting = () => {
+      const [playpause, setPlaypause] = useState(false);
     
+      if (gameState.phase !== 'night' || gameState.role !== 'Mafia') {
+        console.log(`Phase: ${gameState.phase}, Role: ${gameState.role}`);
+        return null;
+      }
+      
+      const handleVote = (targetUsername) => {
+        socket.emit('mafia_vote', { roomId, targetUsername });
+        console.log(`Voted for ${targetUsername}`);
+        setPlaypause(!playpause);
+      };
     
-
-    const handleVote = (targetUsername) => {
-      socket.emit('mafia_vote', { roomId, targetUsername });
-      console.log(`Voted for ${targetUsername}`);
-      setPlaypause(!playpause);
+      // Get list of valid targets (non-Mafia players who are alive)
+      const validTargets = gameState.players.filter(player => 
+        player.isAlive && 
+        player.username !== username && // Don't vote for self
+        (!player.role || player.role !== 'Mafia') // Don't vote for other Mafia
+      );
+    
+      return (
+        <div className={styles.voteContainer}>
+          <h3>Vote to Eliminate</h3>
+          <ReactHowler src='../mygtukas.mp3' playing={playpause} />
+          {validTargets.length > 0 ? (
+            <ul>
+              {validTargets.map(player => (
+                <li key={player.username}>
+                  <button onClick={() => handleVote(player.username)}>
+                    {player.username}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No valid targets available.</p>
+          )}
+        </div>
+      );
     };
-
-    return (
-      <div className={styles.voteContainer}>
-        <h3>Vote to Eliminate</h3>
-        <ReactHowler
-            src='../mygtukas.mp3'
-            playing={playpause}
-          />
-        <ul>
-          {gameState.players
-            .filter(player => player.isAlive && player.role !== 'Mafia')
-            .map(player => (
-              <li key={player.username}>
-                <button onClick={() => handleVote(player.username)}>
-                  {player.username}
-                </button>
-              </li>
-            ))}
-        </ul>
-      </div>
-    );
-  };
 
   // Detective Action UI
   const DetectiveAction = () => {
