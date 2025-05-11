@@ -672,3 +672,24 @@ section .button button:hover {
   color: #2c3e50;
   margin-right: 12px;
 }
+
+.vote-open-button {
+    background-color: #efa525;
+    color: #02161b;
+    font-family: 'Courier New', monospace;
+    padding: 12px 24px;
+    border: 2px solid #3fb859;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 8px rgba(52, 73, 94, 0.5);
+  }
+  
+  .vote-open-button:hover {
+    background-color: #ef8325;
+    color: #141e02;
+    box-shadow: 0 0 12px rgba(158, 241, 15, 0.8);
+    transform: scale(1.05);
+  }

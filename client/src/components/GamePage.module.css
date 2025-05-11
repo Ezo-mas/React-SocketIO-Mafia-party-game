@@ -1357,3 +1357,44 @@
   content: "💉";
 }
 
+.voteList {
+  list-style: none;
+  align-items: left;
+  padding: 0;
+  margin: 30px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: #2c3e50;
+  border-radius: 20px;
+  padding: 15px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.voteRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: left;
+  background-color: #34495e;
+  padding: 12px 20px;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.voteRow:hover {
+  background-color: #3d566e;
+}
+
+.voteListItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-family: 'Courier New', monospace;
+  color: #ecf0f1;
+}
+
+.votedForButton {
+  background-color: #27ae60 !important;
+  cursor: default;
+}

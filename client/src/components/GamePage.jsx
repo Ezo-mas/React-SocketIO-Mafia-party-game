@@ -811,8 +811,8 @@ const DoctorAction = () => {
           <ReactHowler src='../mygtukas.mp3' playing={voteSound} />
           <ul className={styles.voteList}> 
             {alivePlayers.map(player => (
-              <div className="vote-row">
-                <li key={player.username} className={styles.voteListItem}>
+              <div className="voteList">
+                <p key={player.username} className={styles.voteRow}>
                 
                   <span>{player.username} ({dayVotes[player.username] || 0} votes)</span>
                   <button 
@@ -822,7 +822,7 @@ const DoctorAction = () => {
                   >
                     {votedFor === player.username ? 'Voted' : 'Vote'}
                   </button>
-                </li>
+                </p>
               </div>
             ))}
           </ul>
@@ -1255,7 +1255,7 @@ const DoctorAction = () => {
                         {/* Day Phase Actions */}
                         {gameState.phase === 'day' && gameState.isAlive && (
                           <button
-                            className={styles.voteActionButton} // Add specific style if needed
+                            className={`vote-open-button ${styles.voteActionButton}`} // Add specific style if needed
                             onClick={() => setShowVotingPopup(true)}
                           >
                             Vote
