@@ -653,7 +653,7 @@ const GamePage = () => {
             <ul>
               {validTargets.map(player => (
                 <li key={player.username}>
-                  <button onClick={() => handleVote(player.username)}>
+                  <button className="mafia-button" onClick={() => handleVote(player.username)}>
                     {player.username}
                   </button>
                 </li>
@@ -702,6 +702,7 @@ const GamePage = () => {
             .map(player => (
               <li key={player.username}>
                 <button
+                  className="detective-button"
                   onClick={() => handleInvestigate(player.username)}
                   disabled={hasInvestigatedThisNight} // Disable button after investigation
                 >
@@ -744,7 +745,7 @@ const DoctorAction = () => {
         <ul>
           {validTargets.map(player => (
             <li key={player.username}>
-              <button 
+              <button className="doctor-button"
                 onClick={() => handleHeal(player.username)}
                 disabled={hasHealedThisNight}
               >
@@ -810,16 +811,19 @@ const DoctorAction = () => {
           <ReactHowler src='../mygtukas.mp3' playing={voteSound} />
           <ul className={styles.voteList}> 
             {alivePlayers.map(player => (
-              <li key={player.username} className={styles.voteListItem}>
-                <span>{player.username} ({dayVotes[player.username] || 0} votes)</span>
-                <button
-                  onClick={() => handleVote(player.username)}
-                  disabled={hasVotedThisDay || player.username === username} // Disable if already voted or self
-                  className={votedFor === player.username ? styles.votedForButton : ''} // Style the button for the voted player
-                >
-                  {votedFor === player.username ? 'Voted' : 'Vote'}
-                </button>
-              </li>
+              <div className="vote-row">
+                <li key={player.username} className={styles.voteListItem}>
+                
+                  <span>{player.username} ({dayVotes[player.username] || 0} votes)</span>
+                  <button 
+                    onClick={() => handleVote(player.username)}
+                    disabled={hasVotedThisDay || player.username === username} // Disable if already voted or self
+                    className={ `day-vote-button ${votedFor === player.username ? styles.votedForButton : ''}`} // Style the button for the voted player
+                  >
+                    {votedFor === player.username ? 'Voted' : 'Vote'}
+                  </button>
+                </li>
+              </div>
             ))}
           </ul>
           {hasVotedThisDay && <p>You voted for: {votedFor}</p>}
