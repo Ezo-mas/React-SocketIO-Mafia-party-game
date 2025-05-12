@@ -66,7 +66,7 @@ const CreateRoom = () => {
                 <div className="title"><span>Create a City</span></div>
                 <div className="create-details">
                     <div className="left">
-                        <img src="OHedN0iv.jpg" alt="City Image" />
+                        <img src="OHedN0iv.jpg" alt="City icons" />
                     </div>
                     <div className="right">
                         <p>Welcome, boss! Are you ready to take control and create your own Mafia city? By creating a new game room, you become the <strong>Don</strong>—the leader of your own criminal empire. You’ll set the stage for an intense, strategic battle where only the strongest, most cunning players will survive.</p>

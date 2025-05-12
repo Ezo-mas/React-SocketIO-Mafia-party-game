@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import ReactHowler from 'react-howler'
@@ -42,8 +42,10 @@ const GamePage = () => {
   });
 
   // ===== UI STATE =====
-  const [countdown, setCountdown] = useState(0); 
-  const [showGameScreen, setShowGameScreen] = useState(false); 
+  const [countdown, setCountdown] = useState(0);
+  /* eslint-disable-next-line no-unused-vars */ 
+  const [showGameScreen, setShowGameScreen] = useState(false);
+  /* eslint-disable-next-line no-unused-vars */ 
   const [showRoles, setShowRoles] = useState(false); 
   const [isFadingOut, setIsFadingOut] = useState(false);
   
@@ -187,6 +189,64 @@ const GamePage = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [devMode, showDevButton]); 
+
+  const showEliminationNotification = useCallback((newNotification, displayMs = 5000) => {
+    if (
+      showNotification &&
+      eliminationNotification &&
+      eliminationNotification.player === newNotification.player &&
+      eliminationNotification.cause === newNotification.cause
+    ) {
+      return;
+    }
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+      notificationTimeoutRef.current = null;
+    }
+
+    setEliminationNotification(newNotification);
+    setNotificationAnimation('animateIn');
+    setNotificationStatic(false);
+    setShowNotification(true);
+    lastNotificationRef.current = newNotification;
+
+    notificationTimeoutRef.current = setTimeout(() => {
+      setNotificationAnimation('animateOut');
+      setNotificationStatic(false);
+      setTimeout(() => {
+        setShowNotification(false);
+        setEliminationNotification(null);
+        notificationTimeoutRef.current = null;
+      }, 700);
+    }, displayMs);
+  }, [
+    showNotification,
+    eliminationNotification,
+    setEliminationNotification,
+    setNotificationAnimation,
+    setNotificationStatic,
+    setShowNotification,
+    lastNotificationRef,
+    notificationTimeoutRef
+  ]);
+
+  useEffect(() => {
+    if (notificationAnimation === 'animateIn') {
+      const timer = setTimeout(() => {
+        setNotificationAnimation('');
+        setNotificationStatic(true);
+      }, 700); 
+      return () => clearTimeout(timer);
+    }
+  }, [notificationAnimation]);
+
+  useEffect(() => {
+    if (!showNotification && notificationAnimation) {
+      setNotificationAnimation('');
+    }
+  }, [showNotification, notificationAnimation]);
+
+
 
   // Main socket event handlers
   useEffect(() => {
@@ -465,7 +525,7 @@ const GamePage = () => {
       socket.off('day_vote_result', handleDayVoteResult);
       socket.off('game_over', handleGameOver);
     };
-  }, [roomId, username, gameSettings, gameFlow]);
+  }, [roomId, username, gameSettings, gameFlow, gameState.isAlive, showEliminationNotification]);
 
   //temp location, idk where to put this yet
     useEffect(() => {
@@ -510,7 +570,7 @@ const GamePage = () => {
       return () => {
         socket.off('day_phase_start', handleDayPhaseStart);
       };
-    }, []);
+    }, [showEliminationNotification]);
 
   // ===== EVENT HANDLERS =====
   // Chat message sending
@@ -897,55 +957,6 @@ const DoctorAction = () => {
       </div>
     );
   };
-  
-  const showEliminationNotification = (newNotification, displayMs = 5000) => {
-    if (
-      showNotification &&
-      eliminationNotification &&
-      eliminationNotification.player === newNotification.player &&
-      eliminationNotification.cause === newNotification.cause
-    ) {
-      return;
-    }
-    if (notificationTimeoutRef.current) {
-      clearTimeout(notificationTimeoutRef.current);
-      notificationTimeoutRef.current = null;
-    }
-  
-    setEliminationNotification(newNotification);
-    setNotificationAnimation('animateIn');
-    setNotificationStatic(false);
-    setShowNotification(true);
-    lastNotificationRef.current = newNotification;
-  
-    notificationTimeoutRef.current = setTimeout(() => {
-      setNotificationAnimation('animateOut');
-      setNotificationStatic(false);
-      setTimeout(() => {
-        setShowNotification(false);
-        setEliminationNotification(null);
-        notificationTimeoutRef.current = null;
-      }, 700);
-    }, displayMs);
-  };
-
-  useEffect(() => {
-    if (notificationAnimation === 'animateIn') {
-      const timer = setTimeout(() => {
-        setNotificationAnimation('');
-        setNotificationStatic(true);
-      }, 700); 
-      return () => clearTimeout(timer);
-    }
-  }, [notificationAnimation]);
-
-  useEffect(() => {
-    if (!showNotification && notificationAnimation) {
-      setNotificationAnimation('');
-    }
-  }, [showNotification, notificationAnimation]);
-
-
 
 
   const GameOverScreen = ({ data }) => {

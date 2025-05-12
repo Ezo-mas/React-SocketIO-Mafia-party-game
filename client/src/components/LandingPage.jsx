@@ -88,7 +88,7 @@ const LandingPage = () => {
 
             <div className={styles['card-container']}>
               <div className={styles.card}>
-                <img src="Civilian.png" alt="Card Image" />
+                <img src="Civilian.png" alt="Civilian" />
                 <div className={styles['card-info']}>
                   <div className={styles.title}>No powers. Just instincts, suspicion, and your vote.</div>
                   <div className={styles.title}>Your goal: Work with the Town to find and vote out the Mafia.</div>
@@ -96,7 +96,7 @@ const LandingPage = () => {
               </div>
               
               <div className={styles.card}>
-                <img src="Detective.png" alt="Card Image" />
+                <img src="Detective.png" alt="Detective" />
                 <div className={styles['card-info']}>
                   <div className={styles.title}>You see through the lies — but will they listen before it’s too late?</div>
                   <div className={styles.title}>Your goal: Help the Town identify and eliminate the Mafia.</div>
@@ -105,7 +105,7 @@ const LandingPage = () => {
               </div>
 
               <div className={styles.card}>
-                <img src="Mafia.png" alt="Card Image" />
+                <img src="Mafia.png" alt="Mafia" />
                 <div className={styles['card-info']}>
                   <div className={styles.title}>Strike in silence. Lie in daylight. Trust no one — not even your allies.</div>
                   <div className={styles.title}>Your goal: Eliminate all Town players.</div>
@@ -114,7 +114,7 @@ const LandingPage = () => {
               </div>
 
               <div className={styles.card}>
-                <img src="Doctor.png" alt="Card Image" />
+                <img src="Doctor.png" alt="Doctor" />
                 <div className={styles['card-info']}>
                   <div className={styles.title}>One life in your hands. Choose wisely — or let someone die.</div>
                   <div className={styles.title}>Your goal: Protect the Town from the Mafia.</div>
@@ -123,7 +123,7 @@ const LandingPage = () => {
               </div>
 
               <div className={styles.card}>
-                <img src="Jester.png" alt="Card Image" />
+                <img src="Jester.png" alt="Jester" />
                 <div className={styles['card-info']}>
                   <div className={styles.title}>Lies are your game. Getting caught? That’s the win.</div>
                   <div className={styles.title}>Your goal: Get yourself voted out during the day.</div>
@@ -168,7 +168,7 @@ const LandingPage = () => {
               </div>     
               <div className={styles['phases-right']}>
                 <div className={styles.right}>
-                  <img src="abc.jpg" alt="Card Image" />
+                  <img src="abc.jpg" alt="ABC Card" />
                 </div>                
               </div>
             </div>
@@ -185,7 +185,7 @@ const LandingPage = () => {
             
               <div className={styles['rules-left']}> 
                 <div className={styles.left}>
-                  <img src="mafiaparty.jpg" alt="Card Image" />
+                  <img src="mafiaparty.jpg" alt="mafiaparty" />
                 </div>
               </div>
               <div className={styles['rules-right']}> 

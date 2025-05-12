@@ -68,7 +68,7 @@ const LobbyPage = () => {
     // Update timestamp
     lastUpdateTimeRef.current.players = now;
   }
-}, [readyPlayers]);
+}, [readyPlayers, setPlayers]);
   
   // refs updated with latest values
   useEffect(() => {
@@ -223,7 +223,7 @@ const LobbyPage = () => {
         civilianCount: civCount
       }));
     }
-  }, [players.length, gameSettings.mafiaPercentage, gameSettings.detectiveEnabled, gameSettings.doctorEnabled]);
+  }, [players.length, gameSettings.mafiaPercentage, gameSettings.detectiveEnabled, gameSettings.doctorEnabled, gameSettings.jesterEnabled]);
 
   // Event handlers
   const handleInvite = () => {
@@ -278,7 +278,7 @@ const LobbyPage = () => {
       }
       socket.off('game_started');
     };
-  }, []);
+  }, [navigate, roomId, setPlayers]);
 
   useEffect(() => {
     // Change to Alt+D for "Developer mode" - less likely to conflict with browser shortcuts

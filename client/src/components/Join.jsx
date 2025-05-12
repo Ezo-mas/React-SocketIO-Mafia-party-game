@@ -25,18 +25,13 @@ const Join = () => {
           }
         }, 0);
     };
-    
-    
-    const handleNameChange = (e) => {
-        setName(e.target.value);
-    };
 
 
     useEffect(() => {
         if (locationState.username && roomIdInputRef.current) {
             roomIdInputRef.current.focus();
         }
-    }, []);
+    }, [locationState.username]);
 
     useEffect(() => {
         const handleRoomLockedError = (lockedRoomId) => {
@@ -93,7 +88,7 @@ const Join = () => {
                 <div className="title"><span>Join a City</span></div>
                 <div className="join-details">
                     <div className="left">
-                        <img src="black wallpaper.jpg" alt="City Image" />
+                        <img src="black wallpaper.jpg" alt="Dark City" />
                     </div>
                     <div className="right">
                         <p>Ready to dive into the criminal underworld? Choose a city to join and immerse yourself in a world of strategy, deception, and intense competition.</p>

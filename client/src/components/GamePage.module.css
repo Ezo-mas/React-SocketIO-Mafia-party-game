@@ -1352,7 +1352,7 @@
 .protectedNotification {
   box-shadow: 0 8px 32px rgba(0,0,0,0.35);
   color: #c0ffea;
-  background: rgba(22, 60, 53, 0.88);
+  background: rgba(26, 26, 29, 0.85);
 }
 
 .protectedNotification p::before {
