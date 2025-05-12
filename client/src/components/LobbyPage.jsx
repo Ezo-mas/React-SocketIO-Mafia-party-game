@@ -45,7 +45,7 @@ const LobbyPage = () => {
   });
 
   // refs to track current values
-  const playersRef = useRef(players);
+  const playersRef = useRef(players); // players will be an array of objects { username, avatar }
   const usernameRef = useRef(username);
   const gameSettingsRef = useRef(gameSettings);
   const lastUpdateTimeRef = useRef({});
@@ -56,13 +56,13 @@ const LobbyPage = () => {
     if (!lastUpdateTimeRef.current.players || 
       (now - lastUpdateTimeRef.current.players) > 500) {
       
-    // Only update if data has actually changed
+
     if (JSON.stringify(playersList) !== JSON.stringify(playersRef.current)) {
-      setPlayers(playersList);
+      setPlayers(playersList); 
     }
     
     if (JSON.stringify(readyPlayersList) !== JSON.stringify(readyPlayers)) {
-      setReadyPlayers(readyPlayersList);
+      setReadyPlayers(readyPlayersList); 
     }
     
     // Update timestamp
@@ -124,23 +124,21 @@ const LobbyPage = () => {
 
     
 
-    const handlePlayerJoined = (newPlayer) => {
-      if (!players.includes(newPlayer)) {
-        addPlayer(newPlayer);
-      }
+    const handlePlayerJoined = (newPlayerUsername) => {
+      console.log('Player joined (username):', newPlayerUsername);
     };
 
-    const handlePlayerReady = (readyPlayer) => {
+    const handlePlayerReady = (readyPlayerUsername) => { // readyPlayer is a username string
       setReadyPlayers(prev => {
-        if (!prev.includes(readyPlayer)) {
-          return [...prev, readyPlayer];
+        if (!prev.includes(readyPlayerUsername)) {
+          return [...prev, readyPlayerUsername];
         }
         return prev;
       });
     };
 
-    const handlePlayerNotReady = (notReadyPlayer) => {
-      setReadyPlayers(prev => prev.filter(player => player !== notReadyPlayer));
+    const handlePlayerNotReady = (notReadyPlayerUsername) => { // notReadyPlayer is a username string
+      setReadyPlayers(prev => prev.filter(player => player !== notReadyPlayerUsername));
     };
 
     const handleGameStarted = () => {
@@ -261,11 +259,14 @@ const LobbyPage = () => {
   useEffect(() => {
     // Listen for game started event
     socket.on('game_started', (initialState) => {
+      if (initialState && initialState.players) {
+        setPlayers(initialState.players); 
+      }
       // Navigate to the game page after receiving confirmation
       navigate(`/game/${roomId}`, { 
         state: { 
-          username, 
-          gameSettings 
+          username: usernameRef.current, // Use ref for potentially updated username
+          gameSettings: gameSettingsRef.current // Use ref for potentially updated gameSettings
         } 
       });
     });
@@ -536,20 +537,21 @@ const LobbyPage = () => {
         <div className={styles.playersList}>
           <h3 className={styles.playersTitle}>Players in Lobby: {players.length}/12</h3>
           <ul className={styles.playersUl}>
-            {players.map((player) => (
-              <div key={player} className={styles['player-item']}>
+            {players.map((playerObj) => ( // playerObj is { username, avatar }
+              <div key={playerObj.username} className={styles['player-item']}>
                 <div className={styles['player-info']}>
-                  {player} 
-                  {readyPlayers.includes(player) && (
+                  {/* Avatar image removed from LobbyPage display */}
+                  {playerObj.username} 
+                  {readyPlayers.includes(playerObj.username) && (
                     <span className={styles.readyTag}>Ready</span>
                   )}
                 </div>
-                {isHost && player !== username && (
+                {isHost && playerObj.username !== username && (
                   <button 
-                    onClick={() => handleKickPlayer(player)}
-                    disabled={disabledKickButtons[player]}
+                    onClick={() => handleKickPlayer(playerObj.username)}
+                    disabled={disabledKickButtons[playerObj.username]}
                     className={styles.kickButton}
-                    data-player={player}
+                    data-player={playerObj.username}
                   >
                     Kick
                   </button>

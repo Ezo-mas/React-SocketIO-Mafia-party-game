@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs'); // Added fs module
 const { Server } = require('socket.io');
 
 // ==============================
@@ -50,7 +51,10 @@ const dayVoteCounts = {}; // { roomId: { targetUsername: count } }
  * Get list of player usernames in a room
  */
 function getPlayersList(roomId) {
-  return rooms[roomId]?.players.map(player => player.username) || [];
+  return rooms[roomId]?.players.map(player => ({
+    username: player.username,
+    avatar: player.avatar || null 
+  })) || [];
 }
 
 /**
@@ -352,7 +356,8 @@ function startPhaseTimer(roomId) {
             ...room.gameState,
             players: room.players.map(player => ({
               username: player.username,
-              isAlive: player.isAlive  // Preserve existing isAlive status
+              isAlive: player.isAlive,  // Preserve existing isAlive status
+              avatar: player.avatar || null
             })),
             phase: nextPhase,
             transitioning: true
@@ -363,7 +368,8 @@ function startPhaseTimer(roomId) {
             ...room.gameState,
             players: room.players.map(player => ({
               username: player.username,
-              isAlive: player.isAlive  // Preserve existing isAlive status
+              isAlive: player.isAlive,  // Preserve existing isAlive status
+              avatar: player.avatar || null 
             })),
             phase: nextPhase,
             transitioning: true
@@ -397,7 +403,8 @@ function startPhaseTimer(roomId) {
           ...room.gameState,
           players: room.players.map(player => ({
             username: player.username,
-            isAlive: player.isAlive  // Preserve existing isAlive status
+            isAlive: player.isAlive,  // Preserve existing isAlive status
+            avatar: player.avatar || null 
           })),
           phase: nextPhase,
           transitioning: true
@@ -929,7 +936,8 @@ io.on('connection', (socket) => {
           phaseTime: room.gameState.phaseTime || room.settings.nightDuration,
           players: room.players.map(p => ({ 
             username: p.username, 
-            isAlive: p.isAlive === false ? false : true // Fix to preserve dead status
+            isAlive: p.isAlive === false ? false : true, // Fix to preserve dead status
+            avatar: p.avatar || null 
           })),
           role: player.role || 'waiting',
           isAlive: player.isAlive !== false
@@ -1247,16 +1255,42 @@ socket.on('start_game', (roomId, gameSettings, devMode) => {
   // Store settings for the game
   room.settings = gameSettings || room.settings;
 
+  // --- AVATAR ASSIGNMENT LOGIC ---
+  const avatarsPath = path.join(__dirname, '../client/public/avatars');
+  let availableAvatars = [];
+  try {
+    availableAvatars = fs.readdirSync(avatarsPath).filter(file => file.endsWith('.png'));
+    // Shuffle avatars
+    for (let i = availableAvatars.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [availableAvatars[i], availableAvatars[j]] = [availableAvatars[j], availableAvatars[i]];
+    }
+  } catch (err) {
+    console.error("Error reading avatars directory:", err);
+  }
+
+  room.players.forEach((player, index) => {
+    if (availableAvatars.length > 0) {
+      // Assign a unique avatar to each player
+      // If more players than avatars, some won't get one with pop.
+      // Or, if fewer players, some avatars won't be used.
+      player.avatar = availableAvatars.pop(); 
+    } else {
+      player.avatar = null; 
+    }
+    player.isAlive = true; 
+  });
+  // --- END AVATAR ASSIGNMENT ---
+
   const initialState = {
     transitioning: true,
     phase: 'night',
     phaseTime: room.settings.nightDuration,
     players: room.players.map(player => {
-      // Explicitly initialize each player as alive in the player object itself
-      player.isAlive = true;
       return {
         username: player.username,
-        isAlive: true
+        isAlive: player.isAlive, 
+        avatar: player.avatar 
       };
     }),
     settings: room.settings
@@ -1604,7 +1638,8 @@ socket.on('day_vote', ({ roomId, targetUsername }) => {
         phaseTime: room.gameState.phaseTime || room.settings.nightDuration,
         players: room.players.map(player => ({ 
           username: player.username, 
-          isAlive: player.isAlive === false ? false : true  // Default to true unless explicitly false
+          isAlive: player.isAlive === false ? false : true,  // Default to true unless explicitly false
+          avatar: player.avatar || null 
         })),
         role: currentRole,
         isAlive: existingPlayer.isAlive === false ? false : true, // Default to true unless explicitly false
@@ -1616,7 +1651,8 @@ socket.on('day_vote', ({ roomId, targetUsername }) => {
         phaseTime: 0,
         players: room.players.map(player => ({ 
           username: player.username, 
-          isAlive: true 
+          isAlive: true,
+          avatar: player.avatar || null
         })),
         role: currentRole,
         isAlive: true,

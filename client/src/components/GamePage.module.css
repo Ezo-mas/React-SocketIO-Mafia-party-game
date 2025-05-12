@@ -141,6 +141,19 @@
     background: rgba(220, 20, 60, 0.2);
     color: #ffcccb;
   }
+
+.gamePlayerAvatar {
+  width: 50px; 
+  height: 50px;
+  border-radius: 50%; 
+  margin-bottom: 8px; 
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.2); 
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: block; 
+  margin-left: auto; 
+  margin-right: auto; 
+}
   
   .actionArea {
     margin-top: 30px;
@@ -1374,7 +1387,7 @@
 .voteRow {
   display: flex;
   justify-content: space-between;
-  align-items: left;
+  align-items: center; 
   background-color: #34495e;
   padding: 12px 20px;
   border-radius: 8px;
@@ -1397,4 +1410,30 @@
 .votedForButton {
   background-color: #27ae60 !important;
   cursor: default;
+}
+
+.votePlayerInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px; 
+}
+
+.votePlayerAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.voteIconsContainer {
+  display: flex;
+  align-items: center;
+  margin-left: 5px;
+}
+
+.voteImage {
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
 }

@@ -811,19 +811,31 @@ const DoctorAction = () => {
           <ReactHowler src='../mygtukas.mp3' playing={voteSound} />
           <ul className={styles.voteList}> 
             {alivePlayers.map(player => (
-              <div className="voteList">
-                <p key={player.username} className={styles.voteRow}>
-                
-                  <span>{player.username} ({dayVotes[player.username] || 0} votes)</span>
-                  <button 
-                    onClick={() => handleVote(player.username)}
-                    disabled={hasVotedThisDay || player.username === username} // Disable if already voted or self
-                    className={ `day-vote-button ${votedFor === player.username ? styles.votedForButton : ''}`} // Style the button for the voted player
+              <div key={player.username} className={styles.voteRow}> 
+                <div className={styles.votePlayerInfo}> {}
+                  {player.avatar && (
+                    <img
+                      src={`/avatars/${player.avatar}`}
+                      alt={`${player.username}'s avatar`}
+                      className={styles.votePlayerAvatar}
+                    />
+                  )}
+                  <span>{player.username} </span>
+                  <span className={styles.voteIconsContainer}>
+                    {Array.from({ length: dayVotes[player.username] || 0 }).map((_, i) => (
+                      <img key={i} src="/EmojiTownVote.png" alt="vote" className={styles.voteImage} />
+                    ))}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleVote(player.username)}
+                  disabled={hasVotedThisDay || player.username === username} // Disable if already voted or self
+                  className={ `day-vote-button ${votedFor === player.username ? styles.votedForButton : ''}`} // Style the button for the voted player
                   >
                     {votedFor === player.username ? 'Voted' : 'Vote'}
                   </button>
-                </p>
-              </div>
+                {/* Corrected closing tag from </p> to </div> */}
+              </div> 
             ))}
           </ul>
           {hasVotedThisDay && <p>You voted for: {votedFor}</p>}
@@ -1234,11 +1246,18 @@ const DoctorAction = () => {
               </div>
               <div className={styles.mainContent}>
                 <div className={styles.playerGrid}>
-                  {gameState.players.map((player, index) => (
+                  {gameState.players.map((player) => ( // Use player.username for key if possible, or index if username not unique early
                     <div
-                      key={index}
+                      key={player.username || player.id} 
                       className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
                     >
+                      {player.avatar && (
+                        <img 
+                          src={`/avatars/${player.avatar}`} 
+                          alt={`${player.username}'s avatar`} 
+                          className={styles.gamePlayerAvatar}
+                        />
+                      )}
                       <div className={styles.playerName}>
                         {player.username} 
                       </div>
