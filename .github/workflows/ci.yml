@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies (client)
+        working-directory: client
+        run: npm ci
+
+      - name: Install dependencies (server)
+        working-directory: server
+        run: npm ci
+
+      - name: Build client
+        working-directory: client
+        run: npm run build
+
+      # Optional: Run tests if available
+      # - name: Run tests
+      #   working-directory: client
+      #   run: npm test -- --watchAll=false
