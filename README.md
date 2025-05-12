@@ -53,7 +53,7 @@ A real-time multiplayer Mafia party game built with React on the frontend and So
 3. Start both applications
    ```bash
    # In server/
-   npm start
+   node index.js
    # In client/
    npm start
 
