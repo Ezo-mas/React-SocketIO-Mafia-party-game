@@ -2,6 +2,11 @@ import { io } from 'socket.io-client';
 
 // Determine server URL based on current environment
 const getServerUrl = () => {
+  // Check if we're in a test environment or if window is undefined
+  if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') {
+    return 'http://localhost:8080'; // Mock URL for tests
+  }
+  
   // Check if we're in production (deployment) by checking the domain
   if (window.location.hostname !== 'localhost') {
     return window.location.origin; // Use the same origin for WebSocket in production

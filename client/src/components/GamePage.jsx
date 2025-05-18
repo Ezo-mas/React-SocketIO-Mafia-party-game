@@ -70,7 +70,7 @@ const MemoizedTarget = React.memo(({ player, selectedTarget, handleAction, isDis
 
 const useTargetSelection = (roomId, gameState, gameSettings, roleType) => {
   const [selectedTarget, setSelectedTarget] = useState(null);
-  const [playpause, setPlaypause] = useState(false);
+  const [playSoundTrigger, setPlaySoundTrigger] = useState(false);
   
   useEffect(() => {
     if (gameState.phase === 'night' && gameState.phaseTime === gameSettings.nightDuration) {
@@ -99,10 +99,13 @@ const useTargetSelection = (roomId, gameState, gameSettings, roleType) => {
   }, [selectedTarget, roomId, roleType]);
   
   const playSound = () => {
-    setPlaypause(!playpause);
+    setPlaySoundTrigger(true);
+    setTimeout(() => {
+      setPlaySoundTrigger(false);
+    }, 450);
   };
   
-  return { selectedTarget, setSelectedTarget, playpause, playSound };
+  return { selectedTarget, setSelectedTarget, playSoundTrigger, playSound };
 };
 
 // DayVotingPopup component
@@ -120,6 +123,13 @@ const DayVotingPopup = ({
 }) => {
   const [voteSound, setVoteSound] = useState(false);
 
+  const playSound = () => {
+    setVoteSound(true);
+    setTimeout(() => {
+      setVoteSound(false);
+    }, 450);
+  };
+
   const handleVote = (targetUsername) => {
     if (hasVotedThisDay) {
       alert("You have already voted today.");
@@ -130,6 +140,7 @@ const DayVotingPopup = ({
       return;
     }
 
+    playSound();
     setHasVotedThisDay(true);
     setVotedFor(targetUsername);
     setVoteSound(!voteSound);
@@ -141,7 +152,7 @@ const DayVotingPopup = ({
   return (
     <div className={styles.roleInfoModal}>
       <div className={`${styles.roleInfoContent} ${styles.dayVoteModalContent}`}>
-        <h3 className={styles.dayVoteTitle}>Cast your vote to eliminate someone</h3>
+        <h3 className={styles.dayVoteTitle}>Cast your vote to eliminate</h3>
         <ReactHowler src='../mygtukas.mp3' playing={voteSound} />
         
         <div className={styles.dayVoteTableContainer}>
@@ -203,7 +214,7 @@ const DoctorAction = React.memo(({
   gameState, gameSettings, username, roomId, styles, 
   hasHealedThisNight, setHasHealedThisNight 
 }) => {
-  const { selectedTarget, setSelectedTarget, playpause, playSound } = 
+  const { selectedTarget, setSelectedTarget, playSoundTrigger, playSound } = 
     useTargetSelection(roomId, gameState, gameSettings, 'doctor');
   
   if (gameState.phase !== 'night' || gameState.role !== 'Doctor' || !gameState.isAlive) {
@@ -227,7 +238,7 @@ const DoctorAction = React.memo(({
   return (
     <div className={`${styles.voteContainer} ${styles.doctorActionContainer}`}>
       <h3>Protect a Player</h3>
-      <ReactHowler src='../mygtukas.mp3' playing={playpause} />
+      <ReactHowler src='../mygtukas.mp3' playing={playSoundTrigger} />
       
       {validTargets.length > 0 && (
         <ul className={styles.targetList}>
@@ -252,7 +263,7 @@ const DoctorAction = React.memo(({
 const MafiaVoting = React.memo(({ 
       gameState, gameSettings, username, roomId, styles, mafiaTeammates = []
   }) => {
-    const { selectedTarget, setSelectedTarget, playpause, playSound } = 
+    const { selectedTarget, setSelectedTarget, playSoundTrigger, playSound } = 
       useTargetSelection(roomId, gameState, gameSettings, 'mafia');
 
     const [mafiaVotes, setMafiaVotes] = useState({});
@@ -306,7 +317,7 @@ const MafiaVoting = React.memo(({
   return (
     <div className={`${styles.voteContainer} ${styles.mafiaActionContainer}`}>
       <h3>Eliminate a Target</h3>
-      <ReactHowler src='../mygtukas.mp3' playing={playpause} />
+      <ReactHowler src='../mygtukas.mp3' playing={playSoundTrigger} />
       
       {validTargets.length > 0 ? (
         <>
@@ -357,7 +368,7 @@ const DetectiveAction = React.memo(({
   gameState, gameSettings, username, roomId, styles,
   hasInvestigatedThisNight, setHasInvestigatedThisNight 
 }) => {
-  const { selectedTarget, setSelectedTarget, playpause, playSound } = 
+  const { selectedTarget, setSelectedTarget, playSoundTrigger, playSound } = 
     useTargetSelection(roomId, gameState, gameSettings, 'detective');
 
   if (gameState.phase !== 'night' || gameState.role !== 'Detective' || !gameState.isAlive) {
@@ -388,7 +399,7 @@ const DetectiveAction = React.memo(({
   return (
     <div className={`${styles.voteContainer} ${styles.detectiveActionContainer}`}>
       <h3>Investigate a Suspect</h3>
-      <ReactHowler src='../mygtukas.mp3' playing={playpause} />
+      <ReactHowler src='../mygtukas.mp3' playing={playSoundTrigger} />
       
       <ul className={styles.targetList}>
         {gameState.players

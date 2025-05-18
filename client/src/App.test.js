@@ -1,8 +1,19 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+jest.mock('./services/socket', () => ({
+  on: jest.fn(),
+  off: jest.fn(),
+  emit: jest.fn(),
+  GameStorage: {
+    setLastSessionTime: jest.fn(),
+    getActiveRoom: jest.fn().mockReturnValue(null),
+    setActiveRoom: jest.fn()
+  }
+}));
+
+test('renders main application header', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  const titleElement = screen.getByText(/Mafia Online/i, { selector: '.logo span' });
+  expect(titleElement).toBeInTheDocument();
 });

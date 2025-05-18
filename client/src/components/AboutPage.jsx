@@ -7,7 +7,7 @@ const AboutPage = () => {
         <div className="title"><span>About Us</span></div>
         <div className="about-details">
           <div className="left">
-            <img src="hd dpz Whatsapp Instagram Facebook.jpg" alt=""/>
+            <img src="hd dpz Whatsapp Instagram Facebook.jpg" alt="La Mafia Team"/>
           </div>
           <div className="right">
             <br />
