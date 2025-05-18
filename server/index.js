@@ -103,31 +103,13 @@ function processMafiaVotes(roomId) {
   console.log(`[DEBUG] processMafiaVotes called for room ${roomId}`);
   const room = rooms[roomId];
   
-  if (!room) {
-    console.log(`[DEBUG] Room ${roomId} not found`);
-    return null;
-  }
-  
-  if (!mafiaVotes[roomId]) {
-    console.log(`[DEBUG] No mafiaVotes for room ${roomId}`);
-    return null;
-  }
-  
-  if (Object.keys(mafiaVotes[roomId]).length === 0) {
-    console.log(`[DEBUG] mafiaVotes object is empty for room ${roomId}`);
+  if (!room || !mafiaVotes[roomId] || Object.keys(mafiaVotes[roomId]).length === 0) {
+    console.log(`[DEBUG] No valid votes for room ${roomId}`);
     delete mafiaVotes[roomId];
     return null;
   }
 
-  console.log(`[DEBUG] Processing votes:`, mafiaVotes[roomId]);
-  
-  // First ensure all players have isAlive property set to true by default
-  room.players.forEach(player => {
-    if (player.isAlive === undefined) {
-      player.isAlive = true;
-    }
-  });
-
+  // Count the votes
   const voteCounts = {};
   Object.values(mafiaVotes[roomId]).forEach((vote) => {
     voteCounts[vote] = (voteCounts[vote] || 0) + 1;
@@ -135,54 +117,58 @@ function processMafiaVotes(roomId) {
   
   console.log(`[DEBUG] Vote counts:`, voteCounts);
 
-  // Only proceed if there are votes
-  if (Object.keys(voteCounts).length === 0) {
-    console.log(`[DEBUG] No vote counts calculated`);
+  // Find the maximum number of votes
+  let maxVotes = 0;
+  for (const count of Object.values(voteCounts)) {
+    if (count > maxVotes) {
+      maxVotes = count;
+    }
+  }
+
+  // Find all players who received the maximum number of votes
+  const playersWithMaxVotes = Object.keys(voteCounts).filter(
+    username => voteCounts[username] === maxVotes
+  );
+
+  // If there's a tie (more than one player with max votes), no one is eliminated
+  if (playersWithMaxVotes.length > 1) {
+    console.log(`[DEBUG] Tie vote between: ${playersWithMaxVotes.join(', ')}. No elimination.`);
     delete mafiaVotes[roomId];
     return null;
   }
 
-  // Determine the player with the most votes
-  const targetUsername = Object.keys(voteCounts).reduce((a, b) =>
-    voteCounts[a] > voteCounts[b] ? a : b
-  );
+  const targetUsername = playersWithMaxVotes[0];
   
-  console.log(`[DEBUG] Selected target: ${targetUsername}`);
-
   // Check if doctor healed this player
   const doctorHealTarget = nightActions[roomId]?.doctorHeal;
   const wasProtected = doctorHealTarget === targetUsername;
+
+  delete mafiaVotes[roomId];
   
+  if (nightActions[roomId]) {
+    delete nightActions[roomId].previousMafiaTarget;
+    delete nightActions[roomId].mafiaTarget;
+  }
+
   if (wasProtected) {
     console.log(`[DEBUG] Doctor protected ${targetUsername} from being killed!`);
-    
-    // Don't mark the player as dead if they were protected
-    // Return information about the protection
     return { targetUsername, wasProtected: true };
   }
 
-  // Mark ONLY the target as dead (not protected)
+  // Process the elimination for unprotected target
   const targetPlayer = room.players.find(p => p.username === targetUsername);
-  if (targetPlayer) {
-    // Verify player is alive before changing status
-    if (targetPlayer.isAlive !== false) {
-      targetPlayer.isAlive = false;
-      console.log(`Mafia killed ${targetUsername}`);
-      
-      // Check if this kill triggered a win condition
-      if (checkWinCondition(roomId)) {
-        delete mafiaVotes[roomId];
-        return null; // Game over, no need to continue
-      }
+  if (targetPlayer && targetPlayer.isAlive) {
+    targetPlayer.isAlive = false;
+    console.log(`Mafia killed ${targetUsername}`);
+    
+    if (checkWinCondition(roomId)) {
+      return null;  
     }
   }
-
-  // Clear votes for the next night
-  delete mafiaVotes[roomId];
-
-  // Return information about the kill (not protected)
+  
   return { targetUsername, wasProtected: false };
 }
+
 
 // Process day votes at the end of the day phase
 function processDayVotes(roomId) {
@@ -1355,13 +1341,20 @@ socket.on('start_game', (roomId, gameSettings, devMode) => {
           const playerSocket = io.sockets.sockets.get(player.id);
           if (playerSocket) {
             playerSocket.emit('assign_role', { role: player.role });
+            if (player.role === 'Mafia') {
+              const mafiaTeammates = playersWithRoles
+                .filter(p => p.role === 'Mafia' && p.id !== player.id)
+                .map(p => p.username);
+              
+              playerSocket.emit('mafia_teammates', mafiaTeammates);
+            }
           }
         });
         
         // Wait for role reveal animation to complete, then start the first phase
         setManagedTimeout(`start_phase_${roomId}`, () => {
           startPhaseTimer(roomId);
-        }, 3000);
+        }, 3000); 
       }
     }, 1000);
   }, 1000);
@@ -1409,6 +1402,17 @@ socket.on('mafia_vote', ({ roomId, targetUsername }) => {
   mafiaVotes[roomId][socket.id] = targetUsername; // Store the vote
   console.log(`Mafia vote: ${player.username} voted for ${targetUsername}`);
   console.log(`[DEBUG] Current votes in room ${roomId}:`, mafiaVotes[roomId]);
+
+  const voteCounts = {};
+  Object.values(mafiaVotes[roomId]).forEach(target => {
+    voteCounts[target] = (voteCounts[target] || 0) + 1;
+  });
+
+  room.players.forEach(player => {
+    if (player.role === 'Mafia' && player.isAlive) {
+      io.to(player.id).emit('mafia_vote_update', voteCounts);
+    }
+  });
 });
 
 // Handle Detective investigation

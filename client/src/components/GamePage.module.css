@@ -88,10 +88,24 @@
   
   .playerGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 15px;
   }
-  
+
+  @media (min-width: 1600px) {
+    .playerGrid {
+      grid-template-columns: repeat(8, 1fr);
+      max-width: 1920px;
+      margin: 0 auto;
+    }
+  }
+
+  @media (min-width: 1200px) and (max-width: 1599px) {
+    .playerGrid {
+      grid-template-columns: repeat(auto-fit, minmax(12.5%, 1fr));
+    }
+  } 
+
   .playerCard {
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(5px);
@@ -113,7 +127,73 @@
     background: rgba(80, 0, 0, 0.15);
     opacity: 0.7;
   }
-  
+
+  .mafiaTeammate {
+    position: relative;
+    transition: border 0.3s ease;
+  }
+
+  .mafiaTeammate::after {
+    content: 'MAFIA';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 16px;
+    color: rgba(255, 77, 77, 0.5);
+    opacity: 0.8;
+    z-index: 5;
+    width: 13px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-align: right;
+    transition: width 0.8s cubic-bezier(0.0, 0.0, 0.2, 1.0),
+                color 0.5s ease-out,
+                opacity 0.5s ease-out,
+                text-shadow 0.5s ease-out;
+  }
+
+  .mafiaTeammate:hover {
+    border: 1px solid rgba(255, 77, 77, 0.5) !important;
+  }
+
+  .mafiaTeammate:hover::after {
+    color: #ff4d4d;
+    text-shadow: 0 0 8px rgba(255, 77, 77, 0.7);
+    opacity: 1;
+    width: 55px;
+    animation: typewriterMafia 1.2s cubic-bezier(0.4, 0.1, 0.2, 1) forwards, 
+                pulseMafia 1.5s ease-in-out 1.2s infinite;
+  }
+
+  @keyframes typewriterMafia {
+    0% {
+      width: 14px;
+      right: 5px;
+    }
+    20% {
+      width: 14px;
+      right: 5px;
+    }
+    100% {
+      width: 55px;
+      right: 5px;
+    }
+  }
+
+  @keyframes pulseMafia {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+      text-shadow: 0 0 10px rgba(255, 77, 77, 0.9);
+      color: #ff7272;
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+    
   .playerName {
     font-weight: 600;
     font-size: 1.1rem;
@@ -142,18 +222,18 @@
     color: #ffcccb;
   }
 
-.gamePlayerAvatar {
-  width: 50px; 
-  height: 50px;
-  border-radius: 50%; 
-  margin-bottom: 8px; 
-  object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.2); 
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  display: block; 
-  margin-left: auto; 
-  margin-right: auto; 
-}
+  .gamePlayerAvatar {
+    width: 50px; 
+    height: 50px;
+    border-radius: 50%; 
+    margin-bottom: 8px; 
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2); 
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: block; 
+    margin-left: auto; 
+    margin-right: auto; 
+  }
   
   .actionArea {
     margin-top: 30px;
@@ -1370,70 +1450,820 @@
   content: "💉";
 }
 
-.voteList {
-  list-style: none;
-  align-items: left;
-  padding: 0;
-  margin: 30px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background-color: #2c3e50;
-  border-radius: 20px;
-  padding: 15px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+/* ================== */
+/* Day Voting Styling */
+/* ================== */
+
+/* Day Vote Button */
+.dayVoteButton {
+  background-color: #342e49; 
+  color: #e1e1e6;
+  font-family: 'Poppins', sans-serif;
+  padding: 10px 20px;
+  border: 2px solid rgba(230, 184, 0, 0.5);
+  border-radius: 8px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
 }
 
-.voteRow {
+.dayVoteButton:hover {
+  background-color: rgba(230, 184, 0, 0.5);
+  color: #ffffff;
+  box-shadow: 0 6px 12px rgba(230, 184, 0, 0.4); 
+  transform: translateY(-2px);
+}
+
+.dayVoteButton:disabled {
+  background-color: #252232;
+  color: #575766;
+  border-color: #3d3d4e;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.dayVoteButton.voted {
+  background-color: rgba(230, 184, 0, 0.7); 
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(230, 184, 0, 0.6);
+  position: relative;
+}
+
+
+.dayVoteButton.voted::after {
+  content: "✓";
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-65%);
+}
+
+.dayVoteCloseButton {
+  background: linear-gradient(45deg, #e6b800, #cc9900);
+  color: #1a1a1a;
+  border: none;
+  border-radius: 25px;
+  padding: 10px 24px;
+  margin-top: 1.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+  box-shadow: 0 5px 15px rgba(230, 184, 0, 0.3);
+  font-family: 'Poppins', sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.dayVoteCloseButton:hover {
+  background: linear-gradient(45deg, #ffcc00, #e6b800);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(230, 184, 0, 0.4);
+}
+
+.dayVoteCloseButton:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 8px rgba(230, 184, 0, 0.3);
+}
+
+/* Vote Table Container  */
+.dayVoteTableContainer {
+  background: rgba(20, 20, 25, 0.9);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: 70vh;
+  overflow-y: auto;
+  margin: 18px 0;
+  width: 100%;
+}
+
+/* Day Vote List with grid layout  */
+.dayVoteList {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  width: 100%;
+}
+
+/* Vote Row  */
+.dayVoteRow {
   display: flex;
   justify-content: space-between;
   align-items: center; 
-  background-color: #34495e;
-  padding: 12px 20px;
-  border-radius: 8px;
-  transition: background-color 0.3s ease;
+  background-color: rgba(30, 30, 35, 0.6);
+  padding: 12px 16px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  height: 100%;
 }
 
-.voteRow:hover {
-  background-color: #3d566e;
+.dayVoteRow:hover {
+  background-color: rgba(40, 40, 45, 0.8);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.voteListItem {
+.dayVoteTitle {
+  color: rgba(255, 224, 102, 0.75) !important; 
+  font-size: 1.6rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 15px !important;
+  text-shadow: 0 0 10px rgba(255, 224, 102, 0.3) !important;
+}
+
+.dayVoteModalContent {
+  max-width: 90% !important; 
+  width: 90% !important;
+}
+
+/* Responsive Design for Day Vote Modal */
+@media (min-width: 768px) {
+  .dayVoteModalContent {
+    max-width: 85% !important;
+  }
+  
+  
+  .dayVoteList:has(li:nth-child(6)) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dayVoteModalContent {
+    max-width: 90% !important;
+  }
+
+  .dayVoteList:has(li:nth-child(9)) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .dayVoteModalContent {
+    max-width: 95% !important;
+  }
+
+  .dayVoteList:has(li:nth-child(13)) {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+}
+
+
+/* Player Info in Vote Row */
+.dayVotePlayerInfo {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  width: 100%;
-  font-family: 'Courier New', monospace;
-  color: #ecf0f1;
+  gap: 12px;
 }
 
-.votedForButton {
-  background-color: #27ae60 !important;
-  cursor: default;
+.dayVotePlayerDetails {
+  flex: 1;
 }
 
-.votePlayerInfo {
+.dayVoteNameVoteRow {
   display: flex;
   align-items: center;
-  gap: 10px; 
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.votePlayerAvatar {
-  width: 30px;
-  height: 30px;
+.dayVotePlayerAvatar {
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.voteIconsContainer {
+.dayVotePlayerName {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #e1e1e6;
+}
+
+/* Vote Count Badge */
+.dayVoteCountBadge {
+  background-color: rgba(230, 184, 0, 0.3);
+  color: #e1e1e6;
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-size: 0.95rem;
   display: flex;
   align-items: center;
-  margin-left: 5px;
+  gap: 6px;
+  margin-top: 0;
+  border: 1px solid rgba(230, 184, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-.voteImage {
-  width: 16px;
-  height: 16px;
-  margin-right: 2px;
+.dayVoteIconsContainer {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.dayVoteCountIcon {
+  font-size: 18px;
+  display: inline-block;
+  filter: drop-shadow(0 0 2px rgba(230, 184, 0, 0.5));
+  margin-left: 4px;
+}
+
+/* Vote Status Container */
+.dayVoteStatusContainer {
+  margin: 16px 0;
+  padding: 10px;
+  background: rgba(20, 20, 25, 0.5);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.dayVoteStatus {
+  font-size: 1.05rem;
+  color: #e1e1e6;
+  margin: 0;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-shadow: 0 0 10px rgba(255, 224, 102, 0.2);
+  opacity: 0.9;
+  transition: all 0.3s ease;
+}
+
+.dayVoteStatusContainer:hover .dayVoteStatus {
+  opacity: 1;
+  text-shadow: 0 0 12px rgba(255, 224, 102, 0.3);
+}
+
+.dayVotedName {
+  color: rgba(255, 224, 102, 0.9);
+  font-weight: 600;
+}
+
+/* Vote Open Button */
+.dayVoteOpenButton {
+  background: linear-gradient(135deg, #e6b800, #cc9900);
+  color: #1a1a1a;
+  font-family: 'Poppins', sans-serif;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 5px 15px rgba(230, 184, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.dayVoteOpenButton:before {
+  content: ""; 
+}
+
+.dayVoteOpenButton:hover {
+  background: linear-gradient(135deg, #ffcc00, #e6b800);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 20px rgba(230, 184, 0, 0.6);
+}
+
+.dayVoteOpenButton:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 10px rgba(230, 184, 0, 0.4);
+}
+
+.dayVoteOpenButton:after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: rotate(30deg);
+  transition: transform 0.5s ease;
+  pointer-events: none;
+}
+
+.dayVoteOpenButton:hover:after {
+  transform: rotate(30deg) translate(10%, 10%);
+}
+
+/* Animation for vote button in day phase */
+.dayPhase .dayVoteOpenButton {
+  animation: emergencyPulse 2s infinite;
+}
+
+@keyframes emergencyPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(230, 184, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(230, 184, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(230, 184, 0, 0);
+  }
+}
+
+/* Action Buttons Container */
+.dayButtonsContainer {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.dayVoteActionButton {
+  margin-top: 15px;
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  min-width: 180px;
+  font-size: 1.2rem;
+}
+
+/* Action containers styling */
+.voteContainer {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  margin: 20px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.voteContainer h3 {
+  font-size: 1.3rem;
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: center;
+  position: relative;
+  padding-bottom: 12px;
+  color: #e1e1e6;
+}
+
+/* Role-specific containers */
+.mafiaActionContainer h3 {
+  color: rgba(255, 77, 77, 0.75);
+}
+
+.mafiaActionContainer h3::after {
+  background-color: rgba(231, 76, 60, 0.5);
+}
+
+.detectiveActionContainer h3 {
+  color: rgba(112, 169, 255, 0.75);
+}
+.detectiveActionContainer h3::after {
+  background-color: rgba(52, 152, 219, 0.5);
+}
+
+.doctorActionContainer h3 {
+  color: rgba(96, 228, 137, 0.75);
+}
+
+.doctorActionContainer h3::after {
+  background-color: rgba(46, 204, 113, 0.5);
+}
+
+/* Target list styling */
+.targetList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px; 
+  padding: 0;
+  margin: 15px 0;
+  list-style: none;
+  width: 100%;
+}
+
+.targetItem {
+  margin-bottom: 8px;
+  margin-top: 18px;
+  position: relative;
+  overflow: visible;
+}
+
+.mafiaActionContainer,
+.detectiveActionContainer,
+.doctorActionContainer {
+  padding: 20px 25px;
+  margin-bottom: 25px;
+}
+
+/* Target buttons base styles */
+.targetButton {
+  width: 100%;
+  position: relative;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 75px; 
+  font-size: 1rem;
+  background-color: rgba(30, 30, 35, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: 'Poppins', sans-serif;
+  color: #e1e1e6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  margin-bottom: 0;
+  word-break: break-word;
+  text-align: center;
+}
+
+.targetName {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  white-space: normal; 
+  line-height: 1.2;
+  font-size: 0.9rem;
+}
+
+.targetName.long {
+  font-size: 0.8rem;
+  letter-spacing: -0.5px;
+}
+
+.targetButton {
+  padding: 10px 14px;
+  min-height: 75px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: visible;
+  position: relative;
+}
+
+.targetButton:hover {
+  transform: translateY(-3px);
+  transition: transform 0.2s ease;
+}
+
+.targetButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.targetButton span {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 3px;
+}
+
+.targetButton.selected {
+  transform: scale(0.95);
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.targetButton:disabled.selected {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
+.targetButton.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  display: block;
+  opacity: 1;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.mafiaActionContainer .targetButton.selected::after {
+  content: '';
+}
+
+.doctorActionContainer .targetButton.selected::after {
+  content: '💉';
+  color: rgba(96, 228, 137, 1);
+}
+
+.detectiveActionContainer .targetButton.selected::after {
+  content: '🔍'; 
+  color: rgba(112, 169, 255, 1);
+}
+
+
+.targetButton.self {
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.targetAvatar {
+  width: 42px;
+  height: 42px; 
+  border-radius: 50%;
+  margin-bottom: 2px;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Role-specific button styles */
+.mafiaActionContainer .targetButton {
+  background-color: rgba(46, 46, 46, 0.9);
+  color: rgba(255, 77, 77, 0.75);
+  border: 2px solid rgba(255, 77, 77, 0.4);
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.3);
+}
+
+.mafiaActionContainer .targetButton:hover {
+  background: rgba(255, 77, 77, 0.3);
+  border-color: rgba(255, 77, 77, 0.5);
+  box-shadow: 0 0 8px rgba(255, 77, 77, 0.4);
+  color: #ffbdbd;
+}
+
+.mafiaActionContainer .targetButton.selected,
+.mafiaActionContainer .targetButton.selected:hover {
+  background: rgba(255, 77, 77, 0.4);
+  border: 2px solid rgba(255, 77, 77, 0.8);
+  color: rgba(255, 77, 77, 1);
+  box-shadow: 0 0 12px rgba(255, 77, 77, 0.6);
+  transform: scale(0.95);
+  transition: all 0.2s ease;
+}
+
+.mafiaActionContainer .targetButton:disabled.selected {
+  background: rgba(255, 77, 77, 0.4);
+  border: 2px solid rgba(255, 77, 77, 0.8) !important;
+  color: rgba(255, 77, 77, 1);
+  box-shadow: 0 0 12px rgba(255, 77, 77, 0.6);
+}
+
+.detectiveActionContainer .targetButton {
+  background-color: rgba(46, 46, 46, 0.9);
+  color: rgba(112, 169, 255, 0.75);
+  border: 2px solid rgba(112, 169, 255, 0.4);
+  box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+}
+
+.detectiveActionContainer .targetButton:hover {
+  background: rgba(112, 169, 255, 0.3);
+  border-color: rgba(112, 169, 255, 0.5);
+  box-shadow: 0 0 8px rgba(112, 169, 255, 0.4);
+  color: #d6e5ff;
+}
+
+.detectiveActionContainer .targetButton.selected,
+.detectiveActionContainer .targetButton.selected:hover {
+  background: rgba(112, 169, 255, 0.4);
+  border: 2px solid rgba(112, 169, 255, 0.8);
+  color: rgba(112, 169, 255, 1);
+  box-shadow: 0 0 12px rgba(112, 169, 255, 0.6);
+  transform: scale(0.95);
+  transition: all 0.2s ease;
+}
+
+.detectiveActionContainer .targetButton:disabled.selected {
+  background: rgba(112, 169, 255, 0.4);
+  border: 2px solid rgba(112, 169, 255, 0.8) !important;
+  color: rgba(112, 169, 255, 1);
+  box-shadow: 0 0 12px rgba(112, 169, 255, 0.6);
+}
+
+.doctorActionContainer .targetButton {
+  background-color: rgba(46, 46, 46, 0.9);
+  color: rgba(96, 228, 137, 0.75);
+  border: 2px solid rgba(96, 228, 137, 0.4);
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.3);
+}
+
+.doctorActionContainer .targetButton:hover {
+  background: rgba(96, 228, 137, 0.3);
+  border-color: rgba(96, 228, 137, 0.5);
+  box-shadow: 0 0 8px rgba(96, 228, 137, 0.4);
+  color: #c0ffe0;
+}
+
+.doctorActionContainer .targetButton.selected,
+.doctorActionContainer .targetButton.selected:hover {
+  background: rgba(96, 228, 137, 0.4);
+  border: 2px solid rgba(96, 228, 137, 0.8);
+  color: rgba(96, 228, 137, 1);
+  box-shadow: 0 0 12px rgba(96, 228, 137, 0.6);
+  transform: scale(0.95);
+  transition: all 0.2s ease;
+}
+
+.doctorActionContainer .targetButton:disabled.selected {
+  background: rgba(96, 228, 137, 0.4);
+  border: 2px solid rgba(96, 228, 137, 0.8) !important;
+  color: rgba(96, 228, 137, 1);
+  box-shadow: 0 0 12px rgba(96, 228, 137, 0.6);
+}
+
+.mafiaActionContainer .targetButton.selected {
+  position: relative;
+}
+
+
+/* Mafia vote icons styling */
+.mafiaVoteIcons {
+  position: absolute;
+  top: -22px; 
+  right: 0px;
+  z-index: 50; 
+  transform: translateY(-50%);
+}
+
+.mafiaVoteIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(46, 46, 46, 0.95); 
+  border: 1px solid rgba(255, 77, 77, 1); 
+  border-radius: 8px;
+  padding: 4px 10px; 
+  box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
+  white-space: nowrap;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.voteCount {
+  color: rgba(255, 77, 77, 1);
+  font-weight: bold;
+  font-size: 1rem; 
+  display: flex;
+  align-items: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.voteCount::before {
+  content: "☠️";
+  font-size: 0.9rem; 
+  margin-right: 4px;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7));
+}
+
+.targetButton.selected + .mafiaVoteIcons .mafiaVoteIcon,
+.mafiaVoteIcons.selectedTarget .mafiaVoteIcon {
+  background-color: rgba(255, 77, 77, 0.4); 
+  border: 1px solid rgba(255, 77, 77, 0.8);
+  box-shadow: 0 0 12px rgba(255, 77, 77, 0.6); 
+}
+
+
+.targetButton.selected + .mafiaVoteIcons .voteCount,
+.mafiaVoteIcons.selectedTarget .voteCount {
+  color: rgba(255, 255, 255, 1); 
+}
+
+.targetButton.selected + .mafiaVoteIcons .voteCount::before,
+.mafiaVoteIcons.selectedTarget .voteCount::before {
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7)); 
+}
+
+@keyframes mafiaVotePulse {
+  0% {
+    box-shadow: 0 0 8px rgba(255, 77, 77, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 77, 77, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(255, 77, 77, 0.3);
+  }
+}
+
+.doctorActionContainer .targetButton.selected::after {
+  color: rgba(96, 228, 137, 1);
+}
+
+.detectiveActionContainer .targetButton.selected::after {
+  color: rgba(112, 169, 255, 1);
+}
+
+.roleActionNote {
+  display: none;
+}
+
+/* Investigation Popup */
+.investigationPopup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.investigationContent {
+  background: linear-gradient(135deg, #0b1224, #06080f);
+  border-radius: 15px;
+  padding: 30px;
+  max-width: 450px;
+  width: 90%;
+  color: #e1e1e6;
+  box-shadow: 0 0 30px rgba(40, 60, 100, 0.4); 
+  border: 2px solid rgba(70, 90, 140, 0.3);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.investigationContent::before {
+  content: '🔍';
+  position: absolute;
+  top: -25px;
+  right: -25px;
+  font-size: 100px;
+  opacity: 0.10; 
+  transform: rotate(15deg);
+}
+
+.investigationContent h3 {
+  color: rgba(112, 169, 255, 0.7);
+  margin-top: 0;
+  font-size: 1.8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.investigationContent p {
+  margin: 15px 0;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+
+.investigationMafiaResult {
+  margin-top: 20px !important;
+  font-size: 1.5rem !important;
+  font-weight: 600;
+  color: rgba(255, 77, 77, 0.8);
+  text-shadow: 0 0 8px rgba(255, 77, 77, 0.3); 
+  padding: 12px;
+  border: 1px solid rgba(255, 77, 77, 0.4);
+  border-radius: 10px;
+  background: rgba(255, 77, 77, 0.08); 
+  animation: pulse 2s infinite; 
+}
+
+.investigationTownResult {
+  margin-top: 20px !important;
+  font-size: 1.5rem !important;
+  font-weight: 600;
+  color: rgba(96, 228, 137, 0.8); 
+  text-shadow: 0 0 8px rgba(96, 228, 137, 0.3); 
+  padding: 12px;
+  border: 1px solid rgba(96, 228, 137, 0.4);
+  border-radius: 10px;
+  background: rgba(96, 228, 137, 0.08);
+}
+
+.investigationCloseButton {
+  background: rgba(50, 70, 120, 0.4);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(70, 100, 160, 0.4);
+  border-radius: 25px;
+  padding: 10px 24px;
+  margin-top: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.investigationCloseButton:hover {
+  background: rgba(70, 100, 170, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(40, 60, 100, 0.5);
 }

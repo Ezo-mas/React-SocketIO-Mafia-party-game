@@ -5,6 +5,536 @@ import ReactHowler from 'react-howler'
 import socket, { GameStorage } from '../services/socket';
 import styles from './GamePage.module.css';
 import roleData from '../data/roleData';
+// Fixed the rendering stuff but having everything in game page component is not ideal
+// Because some components are flickering and not working as intended, havign rerenders
+// Normally everything is separated into components in web projects
+//
+// This is the example structure for future reference
+// /src
+//   /components
+//     /GamePage
+//       GamePage.jsx           # Main container component
+//       /RoleActions
+//         DoctorAction.jsx     # Doctor-specific component
+//         MafiaVoting.jsx      # Mafia-specific component  
+//         DetectiveAction.jsx  # Detective-specific component
+//       /UI
+//         GameTimer.jsx        # Timer component
+//         MemoizedTarget.jsx   # Reusable target button
+//         PlayerGrid.jsx       # Player display grid
+//       /Modals
+//         EliminationNotification.jsx
+//         InvestigationPopup.jsx
+//         DayVotingPopup.jsx
+//       /Screens
+//         GameOverScreen.jsx   # Game over display
+//         RoleRevealScreen.jsx # Role reveal animation
+//      etc.
+
+const GameTimer = React.memo(({ phase, time }) => {
+  return (
+    <div className={styles.timer}>
+      {Math.floor(time / 60)}:{String(time % 60).padStart(2, '0')}
+    </div>
+  );
+});
+
+const MemoizedTarget = React.memo(({ player, selectedTarget, handleAction, isDisabled, username, isSelf }) => {
+  return (
+    <li className={styles.targetItem}>
+      <button 
+        className={`${styles.targetButton} ${selectedTarget === player.username ? styles.selected : ''} ${isSelf ? styles.self : ''}`}
+        onClick={() => handleAction(player.username)}
+        disabled={isDisabled}
+        data-username={player.username}
+      >
+        {player.avatar && (
+          <img
+            src={`/avatars/${player.avatar}`}
+            alt={`${player.username}`}
+            className={styles.targetAvatar}
+          />
+        )}
+        <span className={`${styles.targetName} ${player.username.length > 10 ? styles.long : ''}`}>
+        {player.username}
+        </span>
+      </button>
+    </li>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.selectedTarget === nextProps.selectedTarget &&
+    prevProps.isDisabled === nextProps.isDisabled
+  );
+});
+
+const useTargetSelection = (roomId, gameState, gameSettings, roleType) => {
+  const [selectedTarget, setSelectedTarget] = useState(null);
+  const [playpause, setPlaypause] = useState(false);
+  
+  useEffect(() => {
+    if (gameState.phase === 'night' && gameState.phaseTime === gameSettings.nightDuration) {
+      setSelectedTarget(null);
+      localStorage.removeItem(`${roleType}_selected_${roomId}`);
+    }
+  }, [gameState.phase, gameState.phaseTime, gameSettings.nightDuration, roomId, roleType]);
+  
+  useEffect(() => {
+    const savedTarget = localStorage.getItem(`${roleType}_selected_${roomId}`);
+    if (savedTarget) {
+      setSelectedTarget(savedTarget);
+    }
+    
+    return () => {
+      if (gameState.phase !== 'night') {
+        localStorage.removeItem(`${roleType}_selected_${roomId}`);
+      }
+    };
+  }, [roleType, roomId, gameState.phase]);
+  
+  useEffect(() => {
+    if (selectedTarget) {
+      localStorage.setItem(`${roleType}_selected_${roomId}`, selectedTarget);
+    }
+  }, [selectedTarget, roomId, roleType]);
+  
+  const playSound = () => {
+    setPlaypause(!playpause);
+  };
+  
+  return { selectedTarget, setSelectedTarget, playpause, playSound };
+};
+
+// DayVotingPopup component
+const DayVotingPopup = ({ 
+  onClose, 
+  username,
+  hasVotedThisDay,
+  setHasVotedThisDay,
+  setVotedFor,
+  votedFor,
+  dayVotes,
+  roomId,
+  socket,
+  alivePlayers
+}) => {
+  const [voteSound, setVoteSound] = useState(false);
+
+  const handleVote = (targetUsername) => {
+    if (hasVotedThisDay) {
+      alert("You have already voted today.");
+      return;
+    }
+    if (targetUsername === username) {
+      alert("You cannot vote for yourself.");
+      return;
+    }
+
+    setHasVotedThisDay(true);
+    setVotedFor(targetUsername);
+    setVoteSound(!voteSound);
+    
+    socket.emit('day_vote', { roomId, targetUsername });
+    console.log(`Voted for ${targetUsername}`);
+  };
+
+  return (
+    <div className={styles.roleInfoModal}>
+      <div className={`${styles.roleInfoContent} ${styles.dayVoteModalContent}`}>
+        <h3 className={styles.dayVoteTitle}>Cast your vote to eliminate someone</h3>
+        <ReactHowler src='../mygtukas.mp3' playing={voteSound} />
+        
+        <div className={styles.dayVoteTableContainer}>
+          <ul className={styles.dayVoteList}>
+            {alivePlayers.map(player => (
+              <li key={player.username} className={styles.dayVoteRow}>
+                <div className={styles.dayVotePlayerInfo}>
+                  {player.avatar && (
+                    <img
+                      src={`/avatars/${player.avatar}`}
+                      alt={`${player.username}'s avatar`}
+                      className={styles.dayVotePlayerAvatar}
+                    />
+                  )}
+                  <div className={styles.dayVotePlayerDetails}>
+                    <div className={styles.dayVoteNameVoteRow}>
+                      <span className={styles.dayVotePlayerName}>{player.username}</span>
+                      {dayVotes[player.username] > 0 && (
+                        <div className={styles.dayVoteCountBadge}>
+                          <span>{dayVotes[player.username]}</span>
+                          <span>votes</span>
+                          <div className={styles.dayVoteIconsContainer}>
+                            <span className={styles.dayVoteCountIcon}>⚖️</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleVote(player.username)}
+                  disabled={hasVotedThisDay || player.username === username}
+                  className={`${styles.dayVoteButton} ${votedFor === player.username ? styles.voted : ''}`}
+                >
+                  {votedFor === player.username ? 'Voted' : 'Vote'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        
+        <div className={styles.dayVoteStatusContainer}>
+          {hasVotedThisDay ? (
+            <p className={styles.dayVoteStatus}>You voted for: <span className={styles.dayVotedName}>{votedFor}</span></p>
+          ) : (
+            <p className={styles.dayVoteStatus}>The town awaits your decision</p>
+          )}
+        </div>
+        
+        <button onClick={onClose} className={styles.dayVoteCloseButton}>Done</button>
+      </div>
+    </div>
+  );
+};
+
+
+// Doctor Action Component
+const DoctorAction = React.memo(({ 
+  gameState, gameSettings, username, roomId, styles, 
+  hasHealedThisNight, setHasHealedThisNight 
+}) => {
+  const { selectedTarget, setSelectedTarget, playpause, playSound } = 
+    useTargetSelection(roomId, gameState, gameSettings, 'doctor');
+  
+  if (gameState.phase !== 'night' || gameState.role !== 'Doctor' || !gameState.isAlive) {
+    return null;
+  }
+  
+  const handleHeal = (targetUsername) => {
+
+    playSound();    
+    if (selectedTarget === targetUsername) return;    
+    setSelectedTarget(targetUsername);
+    
+    socket.emit('doctor_heal', { roomId, targetUsername });
+    console.log(`Doctor healing ${targetUsername}`);
+    
+    setHasHealedThisNight(true);
+  };
+  
+  const validTargets = gameState.players.filter(player => player.isAlive);
+
+  return (
+    <div className={`${styles.voteContainer} ${styles.doctorActionContainer}`}>
+      <h3>Protect a Player</h3>
+      <ReactHowler src='../mygtukas.mp3' playing={playpause} />
+      
+      {validTargets.length > 0 && (
+        <ul className={styles.targetList}>
+          {validTargets.map(player => (
+            <MemoizedTarget
+              key={player.username}
+              player={player}
+              selectedTarget={selectedTarget}
+              handleAction={handleHeal}
+              isDisabled={selectedTarget === player.username}
+              username={username}
+              isSelf={player.username === username}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+});
+
+// Mafia Voting Component
+const MafiaVoting = React.memo(({ 
+      gameState, gameSettings, username, roomId, styles, mafiaTeammates = []
+  }) => {
+    const { selectedTarget, setSelectedTarget, playpause, playSound } = 
+      useTargetSelection(roomId, gameState, gameSettings, 'mafia');
+
+    const [mafiaVotes, setMafiaVotes] = useState({});
+    
+    useEffect(() => {
+    }, [mafiaTeammates]);
+
+    useEffect(() => {
+      const handleMafiaVoteUpdate = (voteCounts) => {
+        console.log("Received mafia vote update:", voteCounts);
+        setMafiaVotes(voteCounts);
+      };
+      
+      socket.on('mafia_vote_update', handleMafiaVoteUpdate);
+      
+      return () => {
+        socket.off('mafia_vote_update', handleMafiaVoteUpdate);
+      };
+    }, []);
+
+
+  if (gameState.phase !== 'night' || gameState.role !== 'Mafia') {
+    return null;
+  }
+  
+  const handleVote = (targetUsername) => {
+      playSound();
+      
+      if (selectedTarget === targetUsername) return;
+      setSelectedTarget(targetUsername);
+
+      socket.emit('mafia_vote', { roomId, targetUsername });
+      console.log(`Voted for ${targetUsername}`);
+    
+    };
+
+    const validTargets = gameState.players.filter(player => {
+    
+    if (!player.isAlive) {
+      return false;
+    }
+    
+    if (player.username === username) {
+        return false;
+      }
+    
+    const isMafiaTeammate = Array.isArray(mafiaTeammates) && mafiaTeammates.includes(player.username);
+    return !isMafiaTeammate;
+  });
+
+  return (
+    <div className={`${styles.voteContainer} ${styles.mafiaActionContainer}`}>
+      <h3>Eliminate a Target</h3>
+      <ReactHowler src='../mygtukas.mp3' playing={playpause} />
+      
+      {validTargets.length > 0 ? (
+        <>
+          <ul className={styles.targetList}>
+            {validTargets.map(player => (
+              <li key={player.username} className={styles.targetItem}>
+                <button 
+                  className={`${styles.targetButton} ${selectedTarget === player.username ? styles.selected : ''}`}
+                  onClick={() => handleVote(player.username)}
+                  disabled={selectedTarget === player.username}
+                  data-username={player.username}
+                >
+                  {player.avatar && (
+                    <img
+                      src={`/avatars/${player.avatar}`}
+                      alt={`${player.username}`}
+                      className={styles.targetAvatar}
+                    />
+                  )}
+                  <span className={`${styles.targetName} ${player.username.length > 10 ? styles.long : ''}`}>
+                    {player.username}
+                  </span>
+                  
+                  {mafiaVotes[player.username] > 0 && (
+                    <div className={`${styles.mafiaVoteIcons} ${selectedTarget === player.username ? styles.selectedTarget : ''}`}>
+                      <span className={styles.mafiaVoteIcon}>
+                        <span className={styles.voteCount}>{mafiaVotes[player.username]}</span>
+                      </span>
+                    </div>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className={styles.roleActionNote}>
+            {selectedTarget ? `You've chosen to eliminate ${selectedTarget}` : "Choose wisely. The town's fate is in your hands."}
+          </div>
+        </>
+      ) : (
+        <p>No valid targets available.</p>
+      )}
+    </div>
+  );
+});
+
+// Detective Action Component
+const DetectiveAction = React.memo(({ 
+  gameState, gameSettings, username, roomId, styles,
+  hasInvestigatedThisNight, setHasInvestigatedThisNight 
+}) => {
+  const { selectedTarget, setSelectedTarget, playpause, playSound } = 
+    useTargetSelection(roomId, gameState, gameSettings, 'detective');
+
+  if (gameState.phase !== 'night' || gameState.role !== 'Detective' || !gameState.isAlive) {
+    return null;
+  }
+
+  const handleInvestigate = (targetUsername) => {
+    playSound();
+    
+    if (selectedTarget === targetUsername) return;
+    
+    setSelectedTarget(targetUsername);
+
+    if (hasInvestigatedThisNight) {
+      alert("You can only investigate one player per night.");
+      return;
+    }
+    if (targetUsername === username) {
+      alert("You cannot investigate yourself.");
+      return;
+    }
+
+    socket.emit('detective_investigate', { roomId, targetUsername });
+    console.log(`Detective investigating ${targetUsername}`);
+    setHasInvestigatedThisNight(true);
+  };
+
+  return (
+    <div className={`${styles.voteContainer} ${styles.detectiveActionContainer}`}>
+      <h3>Investigate a Suspect</h3>
+      <ReactHowler src='../mygtukas.mp3' playing={playpause} />
+      
+      <ul className={styles.targetList}>
+        {gameState.players
+          .filter(player => player.isAlive && player.username !== username)
+          .map(player => (
+            <MemoizedTarget
+              key={player.username}
+              player={player}
+              selectedTarget={selectedTarget}
+              handleAction={handleInvestigate}
+              isDisabled={hasInvestigatedThisNight}
+              username={username}
+              isSelf={false}
+            />
+          ))}
+      </ul>
+    </div>
+  );
+});
+
+
+// Investigation Result Popup
+const InvestigationPopup = React.memo(({ 
+  showInvestigationPopup, 
+  investigationResult,
+  setShowInvestigationPopup,
+  styles
+}) => {
+  if (!showInvestigationPopup || !investigationResult) return null;
+
+  return (
+    <div className={styles.investigationPopup}>
+      <div className={styles.investigationContent}>
+        <h3>Investigation Result</h3>
+        <p>Player: {investigationResult.target}</p>
+        <p className={investigationResult.isMafia ? styles.investigationMafiaResult : styles.investigationTownResult}>
+          {investigationResult.isMafia ? 'MAFIA' : 'NOT MAFIA'}
+        </p>
+        <button onClick={() => setShowInvestigationPopup(false)} className={styles.investigationCloseButton}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+});
+
+// RoleInfoModal component
+const RoleInfoModal = React.memo(({ role, onClose }) => {
+  if (!role) return null;
+
+  return (
+    <div className={styles.roleInfoModal}>
+      <div className={styles.roleInfoContent}>
+        <h3>{role.name}</h3>
+        <p className={styles.alignment}>{role.alignment}</p>
+        <div>
+          <img className={styles.roleImage} src={'../' + role.name + '.png'} alt={role.name} />
+        </div>
+        <p>{role.description}</p>
+        <button onClick={onClose} className={styles.closeButton}>Close</button>
+      </div>
+    </div>
+  );
+});
+
+// Instructions for the game
+const Instructions = React.memo(({ instructions, onClose }) => {
+  if (!instructions) return null;
+
+  return (
+    <div className={styles.roleInfoModal}>
+      <div className={styles.roleInfoContent}>
+        <h3>{instructions.name}</h3>
+        <p>{instructions.description}</p>
+        <br />
+        <p>{instructions.day}</p>
+        <br />
+        <p>{instructions.night}</p>
+        <button onClick={onClose} className={styles.closeButton}>Close</button>
+      </div>
+    </div>
+  );
+});
+
+// Roles section component
+const RolesSection = React.memo(({ styles, roleData }) => {
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [showRoleInfo, setShowRoleInfo] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  const gameInstructions = {
+    name: "Mafia Game – Quick Rules",
+    description:
+      "Each player is secretly assigned a role: either Mafia or Town. The Mafia work together to eliminate others, while the Town tries to identify and vote out the Mafia.",
+    day:
+      "When day breaks, the players discuss and accuse each other. Everyone votes, and the player with the most votes is eliminated. Choose wisely—every vote counts.",
+    night:
+      "As night falls, the Mafia secretly select someone to eliminate. Meanwhile, the Doctor chooses one player to protect, and the Detective investigates one player's role. All night actions happen in secret and are revealed when the sun rises.",
+  };
+
+  const handleRoleClick = (role) => {
+    setSelectedRole(role);
+    setShowRoleInfo(true);
+  };
+
+  const handleCloseRoleInfo = () => {
+    setShowRoleInfo(false);
+  };
+
+  return (
+    <div className={styles.rolesSection}>
+      <h3>Game Roles</h3>
+      <div className={styles.rolesGrid}>
+        {roleData.map((role, index) => (
+          <div
+            key={index}
+            className={styles.roleItem}
+            onClick={() => handleRoleClick(role)}
+          >
+            <span className={`${styles.roleBadge} ${styles[role.alignment]}`}>
+              {role.name}
+            </span>
+          </div>
+        ))}
+      </div>
+      {showRoleInfo && (
+        <RoleInfoModal
+          role={selectedRole}
+          onClose={handleCloseRoleInfo}
+        />
+      )}
+      {showInstructions && (
+        <Instructions
+          instructions={gameInstructions}
+          onClose={() => setShowInstructions(false)}
+        />
+      )}
+      <button
+        className={styles.instructionsButton}
+        onClick={() => setShowInstructions(true)}
+      >
+        Show Instructions
+      </button>
+    </div>
+  );
+});
 
 
 const GamePage = () => {
@@ -21,6 +551,7 @@ const GamePage = () => {
   const hasJoined = useRef(false);
   const isInitialGameUpdate = useRef(false)
   const isTransitioningFromLobby = GameStorage.getTransitioning() === roomId;
+  const [globalMafiaTeammates, setGlobalMafiaTeammates] = useState([]);
 
   // ===== GAME STATE =====
   const [gameFlow, setGameFlow] = useState(isTransitioningFromLobby ? 'loading' : (isPageRefresh ? 'playing' : 'loading'));
@@ -53,10 +584,6 @@ const GamePage = () => {
   const [isPhaseTransitioning, setIsPhaseTransitioning] = useState(false);
   const [isFadingOutTransition, setIsFadingOutTransition] = useState(false); 
   const [transitionPhase, setTransitionPhase] = useState(null);
-
-  // ===== ROLE INFORMATION STATE =====
-  const [selectedRole, setSelectedRole] = useState(null);
-  const [showRoleInfo, setShowRoleInfo] = useState(false);
   
   // ===== CHAT STATE =====
   const [messages, setMessages] = useState([]);
@@ -246,6 +773,25 @@ const GamePage = () => {
     }
   }, [showNotification, notificationAnimation]);
 
+  useEffect(() => {
+    const handleMafiaTeammates = (teammates) => {
+      console.log("GamePage received mafia teammates:", teammates);
+      setGlobalMafiaTeammates(teammates);
+    };
+    
+    socket.on('mafia_teammates', handleMafiaTeammates);
+    
+    return () => {
+      socket.off('mafia_teammates', handleMafiaTeammates);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (globalMafiaTeammates.length > 0) {
+      console.log("Current mafia teammates:", globalMafiaTeammates);
+    }
+  }, [globalMafiaTeammates]);
+
 
 
   // Main socket event handlers
@@ -378,6 +924,10 @@ const GamePage = () => {
       setTransitionPhase(data.phase);
       setIsPhaseTransitioning(true);
       setIsFadingOutTransition(false);
+
+      if (data.phase === 'night') {
+        setShowVotingPopup(false);
+      }
       
       setTimeout(() => {
         setIsFadingOutTransition(true);
@@ -473,7 +1023,7 @@ const GamePage = () => {
       setTimeout(() => {
         setShowInvestigationPopup(false);
         setInvestigationResult(null); // Clear result after showing
-      }, 5000); // Show for 5 seconds
+      }, 7500); // Show for 5 seconds
     };
 
     socket.on('detective_result', handleDetectiveResult);
@@ -579,331 +1129,6 @@ const GamePage = () => {
       socket.emit('chat_message', { roomId, username, message: newMessage });
       setNewMessage('');
     }
-  };
-
-   // Role info handlers
-  const handleRoleClick = (role) => {
-    setSelectedRole(role);
-    setShowRoleInfo(true);
-  };
-
-  const handleCloseRoleInfo = () => {
-    setShowRoleInfo(false);
-  };
-
-  // ===== COMPONENT DEFINITIONS =====
-  // Role info modal
-  const RoleInfoModal = ({ role, onClose }) => {
-    if (!role) return null;
-
-    return (
-      <div className={styles.roleInfoModal}>
-        <div className={styles.roleInfoContent}>
-          <h3>{role.name}</h3>
-          <p className={styles.alignment}>{role.alignment}</p>
-          <div>
-            <img className={styles.roleImage} src={'../' + role.name + '.png'} alt={role.name} />
-          </div>
-          <p>{role.description}</p>
-          <button onClick={onClose} className={styles.closeButton}>Close</button>
-        </div>
-      </div>
-    );
-  };
-
-  // Instructions for the game
-  const Instructions = ({ instructions, onClose }) => {
-    if (!instructions) return null;
-
-    return (
-      <div className={styles.roleInfoModal}>
-        <div className={styles.roleInfoContent}>
-          <h3>{instructions.name}</h3>
-          <p>{instructions.description}</p>
-          <br />
-          <p>{instructions.day}</p>
-          <br />
-          <p>{instructions.night}</p>
-          <button onClick={onClose} className={styles.closeButton}>Close</button>
-        </div>
-      </div>
-    );
-  };
-
-  const [showInstructions, setShowInstructions] = useState(false);
-
-  const gameInstructions = {
-    name: "Mafia Game – Quick Rules",
-    description:
-      "Each player is secretly assigned a role: either Mafia or Town. The Mafia work together to eliminate others, while the Town tries to identify and vote out the Mafia.",
-    day:
-      "When day breaks, the players discuss and accuse each other. Everyone votes, and the player with the most votes is eliminated. Choose wisely—every vote counts.",
-    night:
-      "As night falls, the Mafia secretly select someone to eliminate. Meanwhile, the Doctor chooses one player to protect, and the Detective investigates one player’s role. All night actions happen in secret and are revealed when the sun rises.",
-  };
-  
-
-  // Roles section component
-  const RolesSection = () => {
-    return (
-      <div className={styles.rolesSection}>
-        <h3>Game Roles</h3>
-        <div className={styles.rolesGrid}>
-          {roleData.map((role, index) => (
-            <div
-              key={index}
-              className={styles.roleItem}
-              onClick={() => handleRoleClick(role)}
-            >
-              <span className={`${styles.roleBadge} ${styles[role.alignment]}`}>
-                {role.name}
-              </span>
-            </div>
-          ))}
-        </div>
-        {showRoleInfo && (
-          <RoleInfoModal
-            role={selectedRole}
-            onClose={handleCloseRoleInfo}
-          />
-        )}
-        {showInstructions && (
-          <Instructions
-            instructions={gameInstructions}
-            onClose={() => setShowInstructions(false)}
-          />
-        )}
-        <button
-          className={styles.instructionsButton}
-          onClick={() => setShowInstructions(true)}
-        >
-          Show Instructions
-        </button>
-      </div>
-    );
-  };
-
-    // Mafia voting UI
-    const MafiaVoting = () => {
-      const [playpause, setPlaypause] = useState(false);
-    
-      if (gameState.phase !== 'night' || gameState.role !== 'Mafia') {
-        console.log(`Phase: ${gameState.phase}, Role: ${gameState.role}`);
-        return null;
-      }
-      
-      const handleVote = (targetUsername) => {
-        socket.emit('mafia_vote', { roomId, targetUsername });
-        console.log(`Voted for ${targetUsername}`);
-        setPlaypause(!playpause);
-      };
-    
-      // Get list of valid targets (non-Mafia players who are alive)
-      const validTargets = gameState.players.filter(player => 
-        player.isAlive && 
-        player.username !== username && // Don't vote for self
-        (!player.role || player.role !== 'Mafia') // Don't vote for other Mafia
-      );
-    
-      return (
-        <div className={styles.voteContainer}>
-          <h3>Vote to Eliminate</h3>
-          <ReactHowler src='../mygtukas.mp3' playing={playpause} />
-          {validTargets.length > 0 ? (
-            <ul>
-              {validTargets.map(player => (
-                <li key={player.username}>
-                  <button className="mafia-button" onClick={() => handleVote(player.username)}>
-                    {player.username}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No valid targets available.</p>
-          )}
-        </div>
-      );
-    };
-
-  // Detective Action UI
-  const DetectiveAction = () => {
-    const [playpause, setPlaypause] = useState(false); // Sound effect state
-
-    if (gameState.phase !== 'night' || gameState.role !== 'Detective' || !gameState.isAlive) {
-      return null; // Only show for alive Detective during the night
-    }
-
-    const handleInvestigate = (targetUsername) => {
-      if (hasInvestigatedThisNight) {
-        alert("You can only investigate one player per night.");
-        return;
-      }
-      if (targetUsername === username) {
-        alert("You cannot investigate yourself.");
-        return;
-      }
-      socket.emit('detective_investigate', { roomId, targetUsername });
-      console.log(`Detective investigating ${targetUsername}`);
-      setHasInvestigatedThisNight(true); // Mark as investigated for this night
-      setPlaypause(!playpause); // Trigger sound effect
-    };
-
-    return (
-      <div className={styles.voteContainer}> {/* Reusing vote container style */}
-        <h3>Investigate a Player</h3>
-        <ReactHowler
-          src='../mygtukas.mp3' // Reusing button sound
-          playing={playpause}
-        />
-        <ul>
-          {gameState.players
-            .filter(player => player.isAlive && player.username !== username) // Filter alive players, exclude self
-            .map(player => (
-              <li key={player.username}>
-                <button
-                  className="detective-button"
-                  onClick={() => handleInvestigate(player.username)}
-                  disabled={hasInvestigatedThisNight} // Disable button after investigation
-                >
-                  {player.username}
-                </button>
-              </li>
-            ))}
-        </ul>
-      </div>
-    );
-  };
-
-  // Doctor Action UI
-const DoctorAction = () => {
-  const [playpause, setPlaypause] = useState(false);
-
-  if (gameState.phase !== 'night' || gameState.role !== 'Doctor' || !gameState.isAlive) {
-    return null;
-  }
-  
-  const handleHeal = (targetUsername) => {
-    if (hasHealedThisNight) {
-      alert("You can only heal one player per night.");
-      return;
-    }
-    socket.emit('doctor_heal', { roomId, targetUsername });
-    console.log(`Doctor healing ${targetUsername}`);
-    setHasHealedThisNight(true);
-    setPlaypause(!playpause);
-  };
-
-  // Get valid targets (any alive player, including self)
-  const validTargets = gameState.players.filter(player => player.isAlive);
-
-  return (
-    <div className={styles.voteContainer}>
-      <h3>Choose a Player to Protect</h3>
-      <ReactHowler src='../mygtukas.mp3' playing={playpause} />
-      {validTargets.length > 0 ? (
-        <ul>
-          {validTargets.map(player => (
-            <li key={player.username}>
-              <button className="doctor-button"
-                onClick={() => handleHeal(player.username)}
-                disabled={hasHealedThisNight}
-              >
-                {player.username} {player.username === username ? "(You)" : ""}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No valid targets available.</p>
-      )}
-    </div>
-  );
-};
-
-   // Investigation Result Popup
-   const InvestigationPopup = () => {
-    if (!showInvestigationPopup || !investigationResult) return null;
-
-    return (
-      <div className={styles.roleInfoModal}> {/* Reusing role info modal style */}
-        <div className={styles.roleInfoContent}>
-          <h3>Investigation Result</h3>
-          <p>Player: {investigationResult.target}</p>
-          <p className={investigationResult.isMafia ? styles.mafiaResult : styles.townResult}>
-            {investigationResult.isMafia ? 'MAFIA' : 'NOT MAFIA'}
-          </p>
-          <button onClick={() => setShowInvestigationPopup(false)} className={styles.closeButton}>Close</button>
-        </div>
-      </div>
-    );
-  };
-
-  // Day Voting Popup (Truksta dizaino)
-  const DayVotingPopup = ({ onClose }) => {
-    const [voteSound, setVoteSound] = useState(false);
-
-    const handleVote = (targetUsername) => {
-      if (hasVotedThisDay) {
-        alert("You have already voted today.");
-        return;
-      }
-      if (targetUsername === username) {
-        alert("You cannot vote for yourself.");
-        return;
-      }
-
-      socket.emit('day_vote', { roomId, targetUsername });
-      setHasVotedThisDay(true);
-      setVotedFor(targetUsername);
-      setVoteSound(!voteSound); 
-      console.log(`Voted for ${targetUsername}`);
-      // onClose();
-    };
-
-    // Get only alive players for voting
-    const alivePlayers = gameState.players.filter(p => p.isAlive);
-
-    return (
-      <div className={styles.roleInfoModal}>
-        <div className={styles.roleInfoContent}>
-          <h3>Vote to Eliminate</h3>
-          <ReactHowler src='../mygtukas.mp3' playing={voteSound} />
-          <ul className={styles.voteList}> 
-            {alivePlayers.map(player => (
-              <div key={player.username} className={styles.voteRow}> 
-                <div className={styles.votePlayerInfo}> {}
-                  {player.avatar && (
-                    <img
-                      src={`/avatars/${player.avatar}`}
-                      alt={`${player.username}'s avatar`}
-                      className={styles.votePlayerAvatar}
-                    />
-                  )}
-                  <span>{player.username} </span>
-                  <span className={styles.voteIconsContainer}>
-                    {Array.from({ length: dayVotes[player.username] || 0 }).map((_, i) => (
-                      <img key={i} src="/EmojiTownVote.png" alt="vote" className={styles.voteImage} />
-                    ))}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleVote(player.username)}
-                  disabled={hasVotedThisDay || player.username === username} // Disable if already voted or self
-                  className={ `day-vote-button ${votedFor === player.username ? styles.votedForButton : ''}`} // Style the button for the voted player
-                  >
-                    {votedFor === player.username ? 'Voted' : 'Vote'}
-                  </button>
-                {/* Corrected closing tag from </p> to </div> */}
-              </div> 
-            ))}
-          </ul>
-          {hasVotedThisDay && <p>You voted for: {votedFor}</p>}
-          {!hasVotedThisDay && <p>You have not voted yet.</p>}
-          <button onClick={onClose} className={styles.closeButton}>Close</button>
-        </div>
-      </div>
-    );
   };
 
   // Elimination Notification Component
@@ -1239,14 +1464,12 @@ const DoctorAction = () => {
       case 'playing':
         return (
           <>
-          <div className={styles.gameContainer}>
+          <div className={`${styles.gameContainer} ${gameState.phase === 'day' ? styles.dayPhase : styles.nightPhase}`}>
             <div>
               <div className={styles.header}>
                 <div className={styles.centeredPhaseInfo}>
                   <h2>{gameState.phase === 'day' ? 'Day Phase' : 'Night Phase'}</h2>
-                  <div className={styles.timer}>
-                    {Math.floor(gameState.phaseTime / 60)}:{String(gameState.phaseTime % 60).padStart(2, '0')}
-                  </div>
+                  <GameTimer phase={gameState.phase} time={gameState.phaseTime} />
                 </div>
               </div>
               <div className={styles.playerRoleInfo}>
@@ -1257,50 +1480,102 @@ const DoctorAction = () => {
               </div>
               <div className={styles.mainContent}>
                 <div className={styles.playerGrid}>
-                  {gameState.players.map((player) => ( // Use player.username for key if possible, or index if username not unique early
-                    <div
-                      key={player.username || player.id} 
-                      className={`${styles.playerCard} ${player.isAlive ? '' : styles.dead}`}
-                    >
-                      {player.avatar && (
-                        <img 
-                          src={`/avatars/${player.avatar}`} 
-                          alt={`${player.username}'s avatar`} 
-                          className={styles.gamePlayerAvatar}
-                        />
-                      )}
-                      <div className={styles.playerName}>
-                        {player.username} 
+                  {gameState.players.map((player) => {
+                    const playerCardClass = `${styles.playerCard} ${player.isAlive ? '' : styles.dead} ${
+                      gameState.role === 'Mafia' && globalMafiaTeammates.includes(player.username) ? styles.mafiaTeammate : ''
+                    }`;
+                    return (
+                      <div key={player.username} className={playerCardClass}>
+                        {player.avatar && (
+                          <img 
+                            src={`/avatars/${player.avatar}`} 
+                            alt={`${player.username}'s avatar`} 
+                            className={styles.gamePlayerAvatar}
+                          />
+                        )}
+                        <div className={styles.playerName}>
+                          {player.username} 
+                        </div>
+                        <div className={styles.playerStatus}>
+                          {player.isAlive ? 'Alive' : 'Dead'}
+                        </div>
                       </div>
-                      <div className={styles.playerStatus}>
-                        {player.isAlive ? 'Alive' : 'Dead'}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
+                {/* Action Buttons Container */}
+                  {/* Day Phase Actions */}
+                  {gameState.phase === 'day' && gameState.isAlive && (
+                    <div className={styles.dayButtonsContainer}>
+                      <button
+                        className={`${styles.dayVoteOpenButton} ${styles.dayVoteActionButton}`}
+                        onClick={() => setShowVotingPopup(true)}
+                      >
+                        Vote
+                      </button>
+                    </div>
+                  )}
+                  {/* Night Phase Actions */}
+                  {gameState.phase === 'night' && gameState.isAlive && (
+                    <div className={styles.nightActionsContainer}>
+                      {gameState.role === 'Mafia' && 
+                        <MafiaVoting 
+                          gameState={gameState}
+                          gameSettings={gameSettings}
+                          username={username}
+                          roomId={roomId}
+                          styles={styles}
+                          mafiaTeammates={globalMafiaTeammates}
+                        />
+                      }
+                      {gameState.role === 'Detective' && 
+                        <DetectiveAction 
+                          gameState={gameState}
+                          gameSettings={gameSettings}
+                          username={username}
+                          roomId={roomId}
+                          styles={styles}
+                          hasInvestigatedThisNight={hasInvestigatedThisNight}
+                          setHasInvestigatedThisNight={setHasInvestigatedThisNight}
+                        />
+                      }
+                      {gameState.role === 'Doctor' && 
+                        <DoctorAction 
+                          gameState={gameState}
+                          gameSettings={gameSettings}
+                          username={username}
+                          roomId={roomId}
+                          styles={styles}
+                          hasHealedThisNight={hasHealedThisNight}
+                          setHasHealedThisNight={setHasHealedThisNight}
+                        />
+                      }
+                    </div>
+                  )}
 
-                      {/* Action Buttons Container */}
-                      <div className={styles.actionButtonsContainer}>
-                        {/* Day Phase Actions */}
-                        {gameState.phase === 'day' && gameState.isAlive && (
-                          <button
-                            className={`vote-open-button ${styles.voteActionButton}`} // Add specific style if needed
-                            onClick={() => setShowVotingPopup(true)}
-                          >
-                            Vote
-                          </button>
-                        )}
-                        {/* Night Phase Actions */}
-                        {gameState.phase === 'night' && gameState.role === 'Mafia' && gameState.isAlive && <MafiaVoting />}
-                        {gameState.phase === 'night' && gameState.role === 'Detective' && gameState.isAlive && <DetectiveAction />}
-                        {gameState.phase === 'night' && gameState.role === 'Doctor' && gameState.isAlive && <DoctorAction />}
-                      </div>
-
-                      {/* Popups */}
-                      <InvestigationPopup />
-                      {showVotingPopup && <DayVotingPopup onClose={() => setShowVotingPopup(false)} />}
-                      <EliminationNotification />
+                {/* Popups */}
+                <InvestigationPopup 
+                  showInvestigationPopup={showInvestigationPopup}
+                  investigationResult={investigationResult}
+                  setShowInvestigationPopup={setShowInvestigationPopup}
+                  styles={styles}
+                />
+                {showVotingPopup && (
+                  <DayVotingPopup 
+                    onClose={() => setShowVotingPopup(false)}
+                    username={username}
+                    hasVotedThisDay={hasVotedThisDay}
+                    setHasVotedThisDay={setHasVotedThisDay}
+                    setVotedFor={setVotedFor}
+                    votedFor={votedFor}
+                    dayVotes={dayVotes}
+                    roomId={roomId}
+                    socket={socket}
+                    alivePlayers={gameState.players.filter(p => p.isAlive)}
+                  />
+                )}
+                <EliminationNotification />
               <div className={styles['chat-box']}>
                 <div className={styles['chat-messages-container']}>
                   {messages.map((msg, index) => (
@@ -1321,7 +1596,10 @@ const DoctorAction = () => {
                   <button type="submit" onClick={sendMessage}>Send</button>
                 </div>
               </div>
-              <RolesSection /> 
+              <RolesSection 
+                styles={styles}
+                roleData={roleData}
+              />
             </div>
           </div>
           <DevModePanel />
