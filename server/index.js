@@ -1826,6 +1826,13 @@ socket.on('day_vote', ({ roomId, targetUsername }) => {
 });
 
 // ==============================
+// Health check endpoint
+// ==============================
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// ==============================
 // SPA Route Handler
 // ==============================
 app.get("*", (req, res) => {
